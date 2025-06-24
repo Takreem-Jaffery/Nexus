@@ -1,0 +1,16 @@
+.room-grid{
+    display: grid;
+    gap: 8px;
+    padding: 8px;
+
+    /*adjust according to the screen width and user count*/
+    grid-template-columns: repeat(auto-fit,minmax(300px,1fr));
+}
+
+.room-grid video{
+    width: 100%;
+    aspect-ratio: 16/9;
+    object-fit:  cover;
+    border-radius: 8px;
+    background-color: #000;
+}
