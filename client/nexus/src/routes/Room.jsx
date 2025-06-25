@@ -160,6 +160,7 @@ export default function Room() {
           }}
         />
       ))}
+      <div></div>
     </div>
   );
 }
