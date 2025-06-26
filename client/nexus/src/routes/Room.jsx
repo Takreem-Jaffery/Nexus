@@ -1,7 +1,8 @@
 import { useRef, useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import io from "socket.io-client";
 import "./Room.css"
+import BottomBar from "./BottomBar";
 
 const ICE_SERVERS = [
   { urls: "stun:stun.stunprotocol.org" },
@@ -13,6 +14,7 @@ const ICE_SERVERS = [
 ];
 
 export default function Room() {
+  const navigate = useNavigate();
   const { roomID } = useParams();
   const userVideo = useRef();
   const [remoteStreams, setRemoteStreams] = useState([]);
@@ -70,6 +72,18 @@ export default function Room() {
 
         await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
       });
+
+      socket.on("user left",(id)=>{
+        console.log("[INFO] User left:", id);
+
+        const peerConnection = peerConnections.current[id];
+        if (peerConnection) {
+          peerConnection.close();
+          delete peerConnections.current[id];
+        }
+
+        setRemoteStreams((prev) => prev.filter((user) => user.id !== id));
+      })
 
       socket.on("connect", () => {
         console.log("[INFO] Connected as:", socket.id);
@@ -147,20 +161,42 @@ export default function Room() {
     });
   }
 
-  return (
-    <div className="room-grid">
-      <video autoPlay playsInline muted ref={userVideo} className="w-full rounded" />
-      {remoteStreams.map((user) => (
-        <video
-          key={user.id}
-          autoPlay
-          playsInline
-          ref={(element) => {
-            if (element) element.srcObject = user.stream;
-          }}
-        />
-      ))}
-      <div></div>
+  function endCall() {
+    //stop camera and mic
+    if (userStream.current) {
+      userStream.current.getTracks().forEach(track => track.stop());
+    }
+
+    //close all peer connections
+    for (const id in peerConnections.current) {
+      peerConnections.current[id].close();
+      delete peerConnections.current[id];
+    }
+
+    //disconnect the socket
+    if (socketRef.current) {
+      socketRef.current.disconnect();
+    }
+
+    navigate('/');
+  }
+
+  return (<div className="outer-div">
+      <div className="room-grid">
+        <video autoPlay playsInline muted ref={userVideo} className="w-full rounded" />
+        {remoteStreams.map((user) => (
+          <video
+            key={user.id}
+            autoPlay
+            playsInline
+            ref={(element) => {
+              if (element) element.srcObject = user.stream;
+            }}
+          />
+        ))}
+        
+      </div>
+      <div className="bottom-area"><BottomBar onEndCall={endCall}/></div>
     </div>
   );
 }
