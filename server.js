@@ -17,6 +17,8 @@ const io = new Server(server, {
 const rooms = {};
 
 const socketToRoom = {};
+const userToRoomMap = {}
+const cameraStates = {};
 
 io.on("connection", (socket) => {
   console.log(`[INFO] ${socket.id} connected`);
@@ -34,6 +36,12 @@ io.on("connection", (socket) => {
     }, 100);
     // socket.to(roomID).emit("user joined", socket.id);
     socket.join(roomID);
+    userToRoomMap[socket.id] =roomID;
+    
+    socket.emit("initial-camera-states", cameraStates);
+    otherUsers.forEach((id) => {
+      io.to(id).emit("user joined", socket.id)
+    });
   });
 
   socket.on("offer", (payload) => {
@@ -56,6 +64,14 @@ io.on("connection", (socket) => {
       caller: socket.id,
     });
   });
+  socket.on("camera-toggle", ({ userId, isCameraOff }) => {
+    const roomID = userToRoomMap[socket.id];
+    
+    if(roomID)
+      cameraStates[userId]=isCameraOff;
+      socket.to(roomID).emit("camera-toggle", { userId, isCameraOff });
+  });
+
 
   socket.on("disconnect",()=>{
     const roomID = socketToRoom[socket.id];
@@ -68,6 +84,8 @@ io.on("connection", (socket) => {
       socket.to(roomID).emit("user left",socket.id);
     }
     delete socketToRoom[socket.id]
+    delete userToRoomMap[socket.id]
+    delete cameraStates[socket.id]
   })
 
   
