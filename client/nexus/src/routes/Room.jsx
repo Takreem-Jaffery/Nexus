@@ -51,7 +51,7 @@ export default function Room() {
 
       socket.on("user joined", async (userId) => {
         console.log("[INFO] New user joined:", userId);
-        await callUser(userId);
+        // await callUser(userId);
       });
 
       socket.on("offer", async ({ caller, sdp }) => {
