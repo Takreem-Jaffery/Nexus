@@ -72,6 +72,10 @@ io.on("connection", (socket) => {
       socket.to(roomID).emit("camera-toggle", { userId, isCameraOff });
   });
 
+  //MESSAGING
+  socket.on("send-message",({roomId,message,sender})=>{
+    socket.to(roomId).emit("receive-message",{ message, sender })
+  })
 
   socket.on("disconnect",()=>{
     const roomID = socketToRoom[socket.id];

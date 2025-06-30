@@ -1,27 +1,40 @@
-import React from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {v1 as uuid} from "uuid";
 import "./HomePage.css"
 
 const HomePage = ()=>{
+
+    const [name, setName] = useState();
+    const [roles,setRoles] = useState([]);
     const navigate = useNavigate()
     function create(){
         const id = uuid(); //create an id
+
+        sessionStorage.setItem("username",name);
+        sessionStorage.setItem("role",JSON.stringify(roles));
         navigate(`/room/${id}`); //go to that room
+    }
+
+    function handleRoleChange(e) {
+        const value = e.target.value;
+        setRoles(prev=>
+            prev.includes(value)? prev.filter(r=>r!==value):[...prev,value]
+        );
     }
 
     return (
         <div className="home-card">
             <p>Name</p>
-            <input type="text" className="name" placeholder="Enter your name here"></input>
+            <input type="text" className="name" placeholder="Enter your name here" onChange={(e)=>setName(e.target.value)}></input>
             <p>Role</p>
-            <div><input type="checkbox" className="deaf-checkbox" id="deaf-checkbox" name="deaf" value={"deaf"}></input>
+            <div><input type="checkbox" className="deaf-checkbox" id="deaf-checkbox" name="deaf" value={"deaf"} onChange={handleRoleChange}></input>
             <label htmlFor="deaf-checkbox">Deaf 🎧</label></div>
-            <div><input type="checkbox" className="mute-checkbox" id="mute-checkbox" name="mute" value={"mute"}></input>
+            <div><input type="checkbox" className="mute-checkbox" id="mute-checkbox" name="mute" value={"mute"} onChange={handleRoleChange}></input>
             <label htmlFor="mute-checkbox">Mute 🔇</label></div>
-            <div><input type="checkbox" className="hearing-checkbox" id="hearing-checkbox" name="hearing" value={"hearing"}></input>
+            <div><input type="checkbox" className="hearing-checkbox" id="hearing-checkbox" name="hearing" value={"hearing"} onChange={handleRoleChange}></input>
             <label htmlFor="hearing-checkbox">Hearing 👂</label></div>
-            <div><input type="checkbox" className="speaking-checkbox" id="speaking-checkbox" name="speaking" value={"speaking"}></input>
+            <div><input type="checkbox" className="speaking-checkbox" id="speaking-checkbox" name="speaking" value={"speaking"} onChange={handleRoleChange}></input>
             <label htmlFor="speaking-checkbox">Speaking 👄</label></div>
     
             <button onClick={create} className="create-meeting-btn">Create Meeting</button>
