@@ -20,28 +20,40 @@ const socketToRoom = {};
 const userToRoomMap = {}
 const cameraStates = {};
 
+const users = {}
+
 io.on("connection", (socket) => {
   console.log(`[INFO] ${socket.id} connected`);
 
-  socket.on("join room", (roomID) => {
+  socket.on("join room", ({roomID,username}) => {
+    console.log(`[SERVER] ${socket.id} joined room ${roomID} as ${username}`);
+    users[socket.id] = {username, roomID}
     if (!rooms[roomID]) rooms[roomID] = [];
     rooms[roomID].push(socket.id);
 
     socketToRoom[socket.id] = roomID;
-    const otherUsers = rooms[roomID].filter((id) => id !== socket.id);
-    socket.emit("all users", otherUsers);
+    // const otherUsers = rooms[roomID].filter((id) => id !== socket.id);
+    // socket.emit("all users", otherUsers);
+
+    socket.join(roomID);
+
+    const userList = Object.entries(users)
+    .filter(([_, user]) => user.roomID === roomID)
+    .map(([id, user]) => ({ id, username: user.username }));
+
+    socket.emit("all users", userList);
 
     setTimeout(() => { //delaying it slightly
-        socket.to(roomID).emit("user joined", socket.id);
+        socket.to(roomID).emit("user joined", {id: socket.id, username});
     }, 100);
     // socket.to(roomID).emit("user joined", socket.id);
-    socket.join(roomID);
+    
     userToRoomMap[socket.id] =roomID;
     
     socket.emit("initial-camera-states", cameraStates);
-    otherUsers.forEach((id) => {
-      io.to(id).emit("user joined", socket.id)
-    });
+    // userList.forEach((id) => {
+    //   io.to(id).emit("user joined", socket.id)
+    // });
   });
 
   socket.on("offer", (payload) => {
@@ -64,12 +76,12 @@ io.on("connection", (socket) => {
       caller: socket.id,
     });
   });
-  socket.on("camera-toggle", ({ userId, isCameraOff }) => {
+  socket.on("camera-toggle", ({ isCameraOff }) => {
     const roomID = userToRoomMap[socket.id];
     
     if(roomID)
-      cameraStates[userId]=isCameraOff;
-      socket.to(roomID).emit("camera-toggle", { userId, isCameraOff });
+      cameraStates[socket.id]=isCameraOff;
+      socket.to(roomID).emit("camera-toggle", { userId:socket.id, isCameraOff });
   });
 
   //MESSAGING
@@ -86,6 +98,10 @@ io.on("connection", (socket) => {
       rooms[roomID] = rooms[roomID].filter(id=>id!==socket.id)
       //users[roomID] = room //only current users minus the one that left
       socket.to(roomID).emit("user left",socket.id);
+    }
+    const user = users[socket.id]
+    if(user){
+      delete users[socket.id]
     }
     delete socketToRoom[socket.id]
     delete userToRoomMap[socket.id]

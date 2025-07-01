@@ -4,6 +4,7 @@ import io from "socket.io-client";
 import "./Room.css"
 import BottomBar from "./BottomBar";
 import Chat from "./Chat"
+import RemoteVideo from "./RemoteVideo";
 
 const ICE_SERVERS = [
   { urls: "stun:stun.stunprotocol.org" },
@@ -41,19 +42,49 @@ export default function Room() {
       const socket = io.connect("http://localhost:8000");
       socketRef.current = socket;
 
-      socket.on("all users", async (userIDs) => {
-        console.log("[INFO] All existing user IDs:", userIDs);
-        for (const id of userIDs) {
+      socket.on("all users", async (userList) => {
+        console.log("[INFO] All existing user IDs:", userList);
+        const myId = socket.id;
+        for (const {id, username} of userList) {
+          if (id === myId) continue; // skip yourself
           await callUser(id);
+          setRemoteStreams((prev) => {
+            const exists = prev.some((user) => user.id === id);
+            if (!exists) {
+              return [...prev, { id, stream: null, username }];
+            }
+            return prev.map((user) =>
+              user.id === id ? { ...user, username } : user
+            );
+          });
         }
       });
 
 
-      socket.on("user joined", async (userId) => {
-        console.log("[INFO] New user joined:", userId);
-        // await callUser(userId);
+      // socket.on("user joined", async ({id, username}) => {
+      //   // if (!id) return;
+      //   console.log("[INFO] New user joined:", id);
+      //   // await callUser(id);
+      //   if (!remoteStreams.find((user) => user.id === id)) {
+      //     setRemoteStreams((prev) => [...prev, { id, stream: null, username }]);
+      //   }
+      //   console.log(remoteStreams)
+        
+      // });
+      socket.on("user joined", async ({ id, username }) => {
+        setRemoteStreams((prev) => {
+          const exists = prev.some((user) => user.id === id);
+          if (!exists) {
+            return [...prev, { id, stream: null, username }];
+          }
+          return prev.map((user) =>
+            user.id === id ? { ...user, username } : user
+          );
+        });
+        if (!peerConnections.current[id]) {
+          await callUser(id);
+        }
       });
-
       socket.on("offer", async ({ caller, sdp }) => {
         console.log("[INFO][OFFER LISTENER ACTIVE]", caller);
         await handleReceiveCall(caller, sdp);
@@ -95,10 +126,10 @@ export default function Room() {
 
       socket.on("connect", () => {
         console.log("[INFO] Connected as:", socket.id);
-        socket.emit("join room", roomID);
+        socket.emit("join room", {roomID,username});
       });
 
-      socket.on("camera-toggle",({userId, isCameraOff})=>{
+      socket.on("camera-toggle",({userId,isCameraOff})=>{
         setCameraOffUsers((prev)=>({
           ...prev,
           [userId]: isCameraOff
@@ -145,12 +176,34 @@ export default function Room() {
     const peerConnection = new RTCPeerConnection({ iceServers: ICE_SERVERS });
     peerConnections.current[userId] = peerConnection;
 
+    
     peerConnection.ontrack = (event) => {
+      const stream = event.streams[0]
+      if(!stream) return
+      // setRemoteStreams((prev) => {
+      //   const exists = prev.some((user)=>user.id===userId);
+        
+      //   if(!exists){
+      //     return [...prev, { id: userId, stream, username: "Unknown" }];
+      //   }
+      //   return prev.map((user) =>
+      //     user.id === userId ? { ...user, stream } : user
+      //   )
+      // });
+      // console.log(`[ontrack] Received stream from ${userId}`, stream);
+      // setRemoteStreams((prev) =>
+      //   prev.map((user) =>
+      //     user.id === userId ? { ...user, stream } : user
+      //   )
+      // );
       setRemoteStreams((prev) => {
-        if (!prev.find((s) => s.id === userId)) {
-          return [...prev, { id: userId, stream: event.streams[0] }];
+        const exists = prev.some((user) => user.id === userId);
+        if (!exists) {
+          return [...prev, { id: userId, stream, username: "Unknown" }];
         }
-        return prev;
+        return prev.map((user) =>
+          user.id === userId ? { ...user, stream } : user
+        );
       });
     };
     peerConnection.onicecandidate = (event) => {
@@ -245,35 +298,50 @@ export default function Room() {
                 <div className="camera-overlay">
                   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="currentColor" d="M3.41 1.86L2 3.27L4.73 6H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h12c.21 0 .39-.08.55-.18L19.73 21l1.41-1.41l-8.86-8.86zM5 16V8h1.73l8 8zm10-8v2.61l6 6V6.5l-4 4V7a1 1 0 0 0-1-1h-5.61l2 2z"/></svg>
                 </div>
+                
               )}
-            </div>
-          </div>
-          {remoteStreams.map((user) => 
-            {
-              // const cameraOff = cameraOffUsers[user.id];
-              
-              const cameraOff = !!cameraOffUsers[user.id];
-              console.log(user.id, "cameraOff:", cameraOff);
-
-            return (
-            <div className="video-wrapper" key={user.id}>
-              <div className="video-container">
-                {!cameraOff?(<video
-                  key={user.id}
-                  autoPlay
-                  playsInline
-                  ref={(element) => {
-                    if (element) element.srcObject = user.stream;
-                  }}
-                />):(
-                  <div className="video-placeholder">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="#000" d="M12 4a4 4 0 0 1 4 4a4 4 0 0 1-4 4a4 4 0 0 1-4-4a4 4 0 0 1 4-4m0 10c4.42 0 8 1.79 8 4v2H4v-2c0-2.21 3.58-4 8-4"/></svg>
-                  </div>
-                )}
+              <div className="name-overlay">
+                <p>{!username || username==="undefined"? "Anonymous": username}</p>    
               </div>
             </div>
-            )
-            })}
+          </div>
+          {remoteStreams.map((user, index) => 
+            <RemoteVideo 
+              key={user.id}
+              stream={user.stream}
+              isCameraOff={!!cameraOffUsers[user.id]}
+              username = {user.username}/>
+            // {
+              
+            //   const cameraOff = !!cameraOffUsers[user.id];
+            //   console.log(user.id, "cameraOff:", cameraOff);
+              
+            // return (
+            // <div className="video-wrapper" key={user.id||index}>
+            //   <div className="video-container">
+            //     {!cameraOff?(
+            //       <video
+            //       autoPlay
+            //       playsInline
+            //       ref={(el) => {
+            //         if (el) {
+            //           el.srcObject = user.stream ?? null;
+            //         }
+            //       }}
+            //     />
+            //   ):(
+            //       <div className="video-placeholder">
+            //         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="#000" d="M12 4a4 4 0 0 1 4 4a4 4 0 0 1-4 4a4 4 0 0 1-4-4a4 4 0 0 1 4-4m0 10c4.42 0 8 1.79 8 4v2H4v-2c0-2.21 3.58-4 8-4"/></svg>
+            //       </div>
+            //     )}
+            //     <div className="name-overlay">
+            //       <p>{!user.username || user.username === "undefined" ? "Anonymous" : user.username}</p>
+            //     </div>
+            //   </div>
+            // </div>
+            // )
+            // })}
+          )}
           
         </div>
         <div className="bottom-area"><BottomBar 
