@@ -1,10 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import "./Chat.css"
 
-const Chat=({socket,roomId,username})=>{
+const Chat=({socket,roomId,username, chatIsOpen, setChatIsOpen})=>{
     const [message,setMessage] = useState("");
     const [messages,setMessages] = useState([]);
-    
+
     useEffect(()=>{
         if(!socket) return;
 
@@ -29,13 +29,14 @@ const Chat=({socket,roomId,username})=>{
         setMessages((prev)=>[...prev,{message,sender:"You"}])
         setMessage("");    
     }
+
     return <>
-        <div className="chat-panel">
+        <div className={`chat-panel ${chatIsOpen?"":"hidden"}`}>
             <div className="top-bar">
-                <button><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="#000" d="m14.475 12l-7.35-7.35q-.375-.375-.363-.888t.388-.887t.888-.375t.887.375l7.675 7.7q.3.3.45.675t.15.75t-.15.75t-.45.675l-7.7 7.7q-.375.375-.875.363T7.15 21.1t-.375-.888t.375-.887z"/></svg></button>
+                <button className={"close-chat-btn"} onClick={()=>setChatIsOpen(!chatIsOpen)}><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="#000" d="m14.475 12l-7.35-7.35q-.375-.375-.363-.888t.388-.887t.888-.375t.887.375l7.675 7.7q.3.3.45.675t.15.75t-.15.75t-.45.675l-7.7 7.7q-.375.375-.875.363T7.15 21.1t-.375-.888t.375-.887z"/></svg></button>
                 {/* area here for the logo */}
             </div>
-            <div className="chat-area">
+            <div className="chat-message-area">
                 {messages.map((msg,index)=>(
                     <div key={index} className="chat-message">
                         <strong>{msg.sender}</strong>

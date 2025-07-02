@@ -31,6 +31,7 @@ export default function Room() {
   const [isMuted, setIsMuted] = useState(false);
   const [isCameraOff, setIsCameraOff] = useState(false);
   const [cameraOffUsers, setCameraOffUsers] = useState({})
+  const [chatIsOpen,setChatIsOpen] = useState(true);
   
   useEffect(() => {
     async function init() {
@@ -279,8 +280,8 @@ export default function Room() {
   }
 
   return (<div className="outer-div">
-    <div className="video-area">
-        <div className="room-grid">
+    <div className={`video-area ${chatIsOpen?"":"full-width"}`}>
+        <div className={`room-grid ${remoteStreams.length === 0 ? "single" : ""}`}>
           <div className="video-wrapper">
             <div className="video-container">
               <video 
@@ -311,36 +312,6 @@ export default function Room() {
               stream={user.stream}
               isCameraOff={!!cameraOffUsers[user.id]}
               username = {user.username}/>
-            // {
-              
-            //   const cameraOff = !!cameraOffUsers[user.id];
-            //   console.log(user.id, "cameraOff:", cameraOff);
-              
-            // return (
-            // <div className="video-wrapper" key={user.id||index}>
-            //   <div className="video-container">
-            //     {!cameraOff?(
-            //       <video
-            //       autoPlay
-            //       playsInline
-            //       ref={(el) => {
-            //         if (el) {
-            //           el.srcObject = user.stream ?? null;
-            //         }
-            //       }}
-            //     />
-            //   ):(
-            //       <div className="video-placeholder">
-            //         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="#000" d="M12 4a4 4 0 0 1 4 4a4 4 0 0 1-4 4a4 4 0 0 1-4-4a4 4 0 0 1 4-4m0 10c4.42 0 8 1.79 8 4v2H4v-2c0-2.21 3.58-4 8-4"/></svg>
-            //       </div>
-            //     )}
-            //     <div className="name-overlay">
-            //       <p>{!user.username || user.username === "undefined" ? "Anonymous" : user.username}</p>
-            //     </div>
-            //   </div>
-            // </div>
-            // )
-            // })}
           )}
           
         </div>
@@ -349,10 +320,12 @@ export default function Room() {
           onToggleMute={toggleMute} 
           isMuted={isMuted}
           onToggleCamera={toggleCamera}
-          isCameraOff={isCameraOff}/></div>
+          isCameraOff={isCameraOff}
+          chatIsOpen={chatIsOpen}
+          setChatIsOpen={setChatIsOpen}/></div>
     </div>
-    <div className="chat-area">
-      <Chat socket={socketRef.current} roomId={roomID} username={username}/>
+  <div className={`chat-area ${chatIsOpen?"":"hidden"}`}>
+      <Chat socket={socketRef.current} roomId={roomID} username={username} chatIsOpen={chatIsOpen} setChatIsOpen={setChatIsOpen}/>
     </div>
   </div>
   );

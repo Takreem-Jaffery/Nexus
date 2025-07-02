@@ -1,3 +1,10 @@
+
+.parent-div{
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    margin: 0px 20px;
+}
 .bottom-bar{
     background-color: black;
     border-radius: 40px;
@@ -34,4 +41,23 @@ svg{
 .end-call:active{
     transform: translateY(1px);
     background-color:#d23a3a;
+}
+.chat-btn{
+    border: none;
+    border-radius: 50%;
+    padding: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 70px;
+    height: 70px;
+}
+.chat-btn:hover{
+    width: 75px;
+    height: 75px;
+    transition: ease-in-out 0.5s;
+}
+.chat-btn svg{
+    width: 40px;
+    height: 40px;
 }
