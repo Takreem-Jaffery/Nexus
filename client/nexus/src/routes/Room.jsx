@@ -5,6 +5,8 @@ import "./Room.css"
 import BottomBar from "./BottomBar";
 import Chat from "./Chat"
 import RemoteVideo from "./RemoteVideo";
+//transcription
+import useMicTranscription from "../useMicStream";
 
 const ICE_SERVERS = [
   { urls: "stun:stun.stunprotocol.org" },
@@ -32,6 +34,10 @@ export default function Room() {
   const [isCameraOff, setIsCameraOff] = useState(false);
   const [cameraOffUsers, setCameraOffUsers] = useState({})
   const [chatIsOpen,setChatIsOpen] = useState(true);
+
+  //transcription
+  const [liveTranscript, setLiveTranscript] = useState("");
+
   
   useEffect(() => {
     async function init() {
@@ -140,6 +146,13 @@ export default function Room() {
       socket.on("initial-camera-states", (states)=>{
         setCameraOffUsers(states)
       })
+
+      socket.on("transcription", ({ userId, transcript }) => {
+        if (userId === socket.id) {
+          setLiveTranscript(transcript);
+        }
+      });
+
     }
 
     init();
@@ -279,6 +292,11 @@ export default function Room() {
     }
   }
 
+  const socket = socketRef.current;
+  const userId = socket?.id;
+  useMicTranscription(socket, roomID, userId);
+  
+
   return (<div className="outer-div">
     <div className={`video-area ${chatIsOpen?"":"full-width"}`}>
         <div className={`room-grid ${remoteStreams.length === 0 ? "single" : ""}`}>
@@ -304,6 +322,7 @@ export default function Room() {
               <div className="name-overlay">
                 <p>{!username || username==="undefined"? "Anonymous": username}</p>    
               </div>
+
             </div>
           </div>
           {remoteStreams.map((user, index) => 
@@ -314,6 +333,9 @@ export default function Room() {
               username = {user.username}/>
           )}
           
+        </div>
+        <div className="transcript-overlay">
+          {liveTranscript && <p>{liveTranscript}</p>}
         </div>
         <div className="bottom-area"><BottomBar 
           onEndCall={endCall} 

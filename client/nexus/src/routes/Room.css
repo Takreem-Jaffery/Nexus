@@ -122,6 +122,10 @@
     font-size: 30px;
     text-shadow: 2px 2px 4px rgba(0,0,0,0.6);
 }
+.transcript-overlay p{
+    color: rgb(196, 196, 29);
+    font-size: medium;
+}
 .video-placeholder {
     position: relative;
     width: 100%;
