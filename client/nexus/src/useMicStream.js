@@ -4,45 +4,53 @@ function useMicTranscription(socket, roomId,userId){
     useEffect(()=>{
         if(!socket || !roomId || !userId) return;
         let mediaRecorder;
+        let chunkTimer;
 
         async function startRecording() {
             const stream = await navigator.mediaDevices.getUserMedia({audio:true});
-            const supportedType = MediaRecorder.isTypeSupported("audio/ogg; codecs=opus")
-            ? "audio/ogg; codecs=opus"
-            : "audio/webm";  // fallback
+            // const supportedType = MediaRecorder.isTypeSupported("audio/ogg; codecs=opus")
+            // ? "audio/ogg; codecs=opus"
+            // : "audio/webm";  // fallback
+            // const supportedType = MediaRecorder.isTypeSupported("audio/webm")
+            // ? "audio/webm"
+            // : ""; // fallback to default
+            const options = [
+            "audio/webm;codecs=opus",
+            "audio/webm",
+            "audio/ogg;codecs=opus",
+            ];
 
-            mediaRecorder = new MediaRecorder(stream, { mimeType: supportedType });
-            // mediaRecorder = new MediaRecorder(stream, {mimeType:"audio/wav"});
+            const mimeType = options.find((type) => MediaRecorder.isTypeSupported(type));
 
-            // mediaRecorder.ondataavailable = async(e)=>{
-            //     if(e.data.size >0){
-            //         const arrayBuffer = await e.data.arrayBuffer()
-            //         socket.emit("audio-chunk",{
-            //             blob: new Uint8Array(arrayBuffer),
-            //             roomId,
-            //             userId,
-            //         })
+            mediaRecorder = new MediaRecorder(stream, { mimeType });
+
+            // mediaRecorder = new MediaRecorder(stream, {mimeType:"audio/webm"});
+            chunkTimer = setInterval(()=>{
+                if(mediaRecorder && mediaRecorder.state ==="recording"){
+                    mediaRecorder.requestData();
+                }
+            }, 3000)
+            mediaRecorder.ondataavailable = async(e)=>{
+                if(e.data.size >0){
+                    const blob = new Blob([e.data], { type: mimeType});
+                    const arrayBuffer = await blob.arrayBuffer();
+                    const uint8 = new Uint8Array(arrayBuffer);
+                    socket.emit("audio-chunk", { blob: uint8, roomId, userId });
+
+                }
+            }
+
+            mediaRecorder.start() //send chunks every 3 seconds
+            // setInterval(()=>{
+            //     if(mediaRecorder && mediaRecorder.state ==="recording"){
+            //         mediaRecorder.requestData();
             //     }
-            // }
-            mediaRecorder.ondataavailable = async (event) => {
-                const blob = new Blob([event.data], { type: "audio/webm" });
-                const formData = new FormData();
-                formData.append("file", blob, "recording.webm");
-
-                const response = await fetch("http://localhost:8000/transcribe", {
-                    method: "POST",
-                    body: formData
-                });
-
-                const result = await response.json();
-                console.log(result);
-                };
-
-            mediaRecorder.start(3000) //send chunks every 3 seconds
+            // }, 3000)
         }
         startRecording();
 
         return()=>{
+            clearInterval(chunkTimer)
             if(mediaRecorder && mediaRecorder.state !=="inactive"){
                 mediaRecorder.stop()
             }

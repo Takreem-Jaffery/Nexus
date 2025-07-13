@@ -6,7 +6,8 @@ const {spawn} = require("child_process")
 const multer = require("multer")
 const axios = require("axios")
 const formData = require("form-data")
-
+const { v4: uuidv4 } = require("uuid");
+const os = require("os");
 
 const app = express();
 app.use(cors({ origin: "http://localhost:5173" }));
@@ -16,27 +17,27 @@ const path = require("path")
 
 const upload = multer({dest: "uploads/"});
 
-app.post("/transcribe", upload.single("file"), (req,res)=>{
-  const audioPath = req.file.path;
-  const python = spawn("python",["transcribe_chunk.py", audioPath]);
+// app.post("/transcribe", upload.single("file"), (req,res)=>{
+//   const audioPath = req.file.path;
+//   const python = spawn("python",["transcribe_chunk.py", audioPath]);
 
-  let result = ""
-  python.stdout.on("data", (data)=>{
-    result += data.toString();
-  })
-  python.stderr.on("data", (data) => {
-    console.error("[ERROR] Python stderr:", data.toString());
-  });
+//   let result = ""
+//   python.stdout.on("data", (data)=>{
+//     result += data.toString();
+//   })
+//   python.stderr.on("data", (data) => {
+//     console.error("[ERROR] Python stderr:", data.toString());
+//   });
 
-  python.on("close", (code) => {
-    fs.unlink(audioPath, () => {}); // Delete temp file
-    if (code === 0) {
-      res.json({ text: result.trim() });
-    } else {
-      res.status(500).json({ error: "Transcription failed." });
-    }
-  });
-})
+//   python.on("close", (code) => {
+//     fs.unlink(audioPath, () => {}); // Delete temp file
+//     if (code === 0) {
+//       res.json({ text: result.trim() });
+//     } else {
+//       res.status(500).json({ error: "Transcription failed." });
+//     }
+//   });
+// })
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
@@ -58,28 +59,79 @@ io.on("connection", (socket) => {
 
   //transcription
   socket.on("audio-chunk", async ({blob, roomId, userId})=>{
-    
-    const py = spawn("python", ["transcribe_chunk.py"]);
+    if (!blob || blob.length ===0){
+      console.warn(`[WARN] Received empty blob from ${userId}`)
+      return;
+    }
+    const tempFilename = `${uuidv4()}.webm`;
+    const tempFilePath = path.join(os.tmpdir(), tempFilename);
 
-    py.stdin.write(Buffer.from(blob));
-    py.stdin.end();
-
-    let result = "";
-    py.stdout.on("data", (chunk) => {
-      result += chunk.toString();
-      console.log(result)
-    });
-
-    py.stderr.on("data", (err) => {
-      console.error("[ERROR] Python error:", err.toString());
-    });
-
-    py.on("close", (code) => {
-      if (result) {
-        console.log(`[TRANSCRIBED] ${userId}: ${result.trim()}`);
-        io.to(roomId).emit("transcription", { userId, transcript: result });
+    fs.writeFile(tempFilePath, Buffer.from(blob), async (err) => {
+      if (err) {
+        console.error("[ERROR] Failed to write blob to temp file:", err);
+        return;
       }
+
+      const py = spawn("python", ["transcribe_chunk.py", tempFilePath]);
+
+      let result = "";
+      py.stdout.on("data", (chunk) => {
+        result += chunk.toString();
+      });
+
+      py.stderr.on("data", (err) => {
+        console.error("[PYTHON ERROR]:", err.toString());
+      });
+
+      py.on("close", (code) => {
+        fs.unlink(tempFilePath, () => {}); // clean up
+        if (result.trim()) {
+          console.log(`[TRANSCRIBED] ${userId}: ${result.trim()}`);
+          io.to(roomId).emit("transcription", { userId, transcript: result.trim() });
+        } else {
+          console.warn(`[WARN] No transcription output from Whisper (exit ${code})`);
+        }
+      });
     });
+
+    // const ffmpeg = spawn("ffmpeg", [
+    //   "-i", "pipe:0",         // Input from stdin
+    //   "-f", "wav",
+    //   "-ar", "16000",         // Sample rate 16 kHz (for Whisper)
+    //   "-ac", "1",             // Mono audio
+    //   "-loglevel", "error",   // Suppress extra logs
+    //   "pipe:1"                // Output to stdout
+    // ]);
+    // const py = spawn("python", ["transcribe_chunk.py"]);
+
+    // ffmpeg.stdin.write(Buffer.from(blob));
+    // ffmpeg.stdin.end();
+
+    // ffmpeg.stdout.pipe(py.stdin);
+
+    
+    // ffmpeg.stderr.on("data",(data)=>{
+    //   console.error("[FFMPEG ERROR]:", data.toString());
+    // })
+
+    // py.stderr.on("data", (err) => {
+    //   console.error("[PYTHON ERROR]:", err.toString());
+    // });
+
+    // let result = "";
+    // py.stdout.on("data", (chunk) => {
+    //   result += chunk.toString();
+    //   // console.log("[TRANSCRIBED CHUNK]:",result)
+    // });
+
+    // py.on("close", (code) => {
+    //   if (result.trim()) {
+    //     console.log(`[TRANSCRIBED] ${userId}: ${result.trim()}`);
+    //     io.to(roomId).emit("transcription", { userId, transcript: result.trim() });
+    //   }
+    // });
+
+
     // try{
     //   const formData = new FormData();
     //   formData.append("file", Buffer.from(blob),{

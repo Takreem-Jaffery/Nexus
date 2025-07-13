@@ -148,9 +148,9 @@ export default function Room() {
       })
 
       socket.on("transcription", ({ userId, transcript }) => {
-        if (userId === socket.id) {
-          setLiveTranscript(transcript);
-        }
+        // if (userId === socket.id) {
+          setLiveTranscript(prev=>`${prev}\n[${username}]: ${transcript}`);
+        // }
       });
 
     }
@@ -335,7 +335,7 @@ export default function Room() {
           
         </div>
         <div className="transcript-overlay">
-          {liveTranscript && <p>{liveTranscript}</p>}
+          {liveTranscript && <pre>{liveTranscript}</pre>}
         </div>
         <div className="bottom-area"><BottomBar 
           onEndCall={endCall} 
