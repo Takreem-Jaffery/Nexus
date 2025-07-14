@@ -17,27 +17,7 @@ const path = require("path")
 
 const upload = multer({dest: "uploads/"});
 
-// app.post("/transcribe", upload.single("file"), (req,res)=>{
-//   const audioPath = req.file.path;
-//   const python = spawn("python",["transcribe_chunk.py", audioPath]);
 
-//   let result = ""
-//   python.stdout.on("data", (data)=>{
-//     result += data.toString();
-//   })
-//   python.stderr.on("data", (data) => {
-//     console.error("[ERROR] Python stderr:", data.toString());
-//   });
-
-//   python.on("close", (code) => {
-//     fs.unlink(audioPath, () => {}); // Delete temp file
-//     if (code === 0) {
-//       res.json({ text: result.trim() });
-//     } else {
-//       res.status(500).json({ error: "Transcription failed." });
-//     }
-//   });
-// })
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
@@ -54,96 +34,194 @@ const cameraStates = {};
 
 const users = {}
 
+async function saveBase64ToWebm(base64Data, outputPath) {
+  // return new Promise((resolve, reject) => {
+  // const matches = base64Data.match(/^data:audio\/webm(;codecs=opus)?;base64,(.+)$/);
+
+  // const base64String = matches ? matches[2] : base64Data;
+  const matches = base64Data.match(/^data:audio\/webm(?:;codecs=opus)?;base64,(.+)$/);
+  if(!matches || matches.length < 2){
+    throw new Error("Invalid data URL format")
+  }
+  const base64String = matches[1];
+  const buffer = Buffer.from(base64String, "base64");
+  return fs.promises.writeFile(outputPath, buffer);
+
+  // await new Promise((res)=>setTimeout(res,200));
+
+  // fs.writeFile(outputPath, buffer, (err) => {
+  //   if (err) reject(err);
+  //   else resolve();
+  // });
+  // });
+}
+
+function convertWebmToWav(webmPath, wavPath) {
+  // fs.stat(webmPath, (err, stats) => {
+  //   if (err || stats.size === 0) {
+  //     console.warn("[WARN] Invalid or empty .webm chunk");
+  //   } else {
+  //     console.log(`[INFO] Temp .webm size: ${stats.size} bytes`);
+  //   }
+  // });
+  // return new Promise((resolve, reject) => {
+  //   const ffmpeg = require("fluent-ffmpeg");
+  //   ffmpeg(webmPath)
+  //     .inputOptions("-f", "webm")
+  //     .audioChannels(1)
+  //     .audioFrequency(16000)
+  //     .format("wav")
+  //     .on("end", () => resolve())
+  //     .on("error", (err) => reject(err))
+  //     .save(wavPath);
+  // });
+  return new Promise((resolve, reject) => {
+    const ffmpeg = require("fluent-ffmpeg");
+    ffmpeg(webmPath)
+      .inputFormat("webm") // <-- explicitly declare format
+      .audioChannels(1)
+      .audioFrequency(16000)
+      .format("wav")
+      .on("start", cmd => console.log(""/*[FFMPEG CMD]", cmd*/))
+      .on("stderr", (line) => console.log(""/*"[FFMPEG STDERR]", line*/))
+      .on("end", () => resolve())
+      .on("error", (err) => reject(err))
+      .save(wavPath);
+  });
+}
+
+function runWhisper(wavPath) {
+  return new Promise((resolve, reject) => {
+    const { spawn } = require("child_process");
+    const py = spawn("python", ["transcribe_chunk.py", wavPath]);
+
+    let result = "";
+    let errorOutput = "";
+
+    py.stdout.on("data", (chunk) => {
+      result += chunk.toString();
+    });
+
+    py.stderr.on("data", (err) => {
+      errorOutput += err.toString();
+      console.error("[PYTHON ERROR]:", err.toString());
+    });
+
+    py.on("close", (code) => {
+      if(code !==0){
+        reject(`[ERROR] Python exited with code ${code}`)
+      }else if(!result.trim()){
+        reject("[ERROR] Transcription returned empty result")
+      } else{
+        resolve(result.trim())
+      }
+      // resolve(result.trim());
+    });
+  });
+}
+
+function cleanupFiles(...paths) {
+  const fs = require("fs");
+  paths.forEach((path) => fs.existsSync(path) && fs.unlinkSync(path));
+}
+
 io.on("connection", (socket) => {
   console.log(`[INFO] ${socket.id} connected`);
 
   //transcription
   socket.on("audio-chunk", async ({blob, roomId, userId})=>{
-    if (!blob || blob.length ===0){
-      console.warn(`[WARN] Received empty blob from ${userId}`)
-      return;
-    }
-    const tempFilename = `${uuidv4()}.webm`;
-    const tempFilePath = path.join(os.tmpdir(), tempFilename);
+     console.log(`[Server] Received chunk from ${userId}`);
+    const tempId = uuidv4();
+    const webmPath = path.join(os.tmpdir(), `${tempId}.webm`);
+    const wavPath = path.join(os.tmpdir(), `${tempId}.wav`);
 
-    fs.writeFile(tempFilePath, Buffer.from(blob), async (err) => {
-      if (err) {
-        console.error("[ERROR] Failed to write blob to temp file:", err);
-        return;
+    try {
+      await saveBase64ToWebm(blob, webmPath);
+      console.log("[INFO] Saved webm chunk:", webmPath);
+      const buffer = await fs.promises.readFile(webmPath);
+      if (!buffer.slice(0, 4).equals(Buffer.from([0x1A, 0x45, 0xDF, 0xA3]))) {
+        throw new Error("[ERROR] Invalid .webm file header – skipping chunk");
+      }
+      const stats = await fs.promises.stat(webmPath);
+      console.log("[DEBUG] .webm file size:", stats.size);
+
+      if (stats.size === 0) {
+        throw new Error("[ERROR] Empty .webm file");
       }
 
-      const py = spawn("python", ["transcribe_chunk.py", tempFilePath]);
+      await convertWebmToWav(webmPath, wavPath);
+      console.log("[INFO] Converted to wav:", wavPath);
 
-      let result = "";
-      py.stdout.on("data", (chunk) => {
-        result += chunk.toString();
-      });
+      const transcription = await runWhisper(wavPath);
+      console.log(`[TRANSCRIBED] ${userId}: ${transcription}`);
 
-      py.stderr.on("data", (err) => {
-        console.error("[PYTHON ERROR]:", err.toString());
-      });
+      io.to(roomId).emit("transcription", { userId, transcript: transcription });
+    } catch (err) {
+      console.error("[ERROR] Transcription pipeline failed:", err);
+    } finally {
+      cleanupFiles(webmPath, wavPath);
+    }
+    // if (!blob || blob.length ===0){
+    //   console.warn(`[WARN] Received empty blob from ${userId}`)
+    //   return;
+    // }
+    // const ffmpeg = require("fluent-ffmpeg");
 
-      py.on("close", (code) => {
-        fs.unlink(tempFilePath, () => {}); // clean up
-        if (result.trim()) {
-          console.log(`[TRANSCRIBED] ${userId}: ${result.trim()}`);
-          io.to(roomId).emit("transcription", { userId, transcript: result.trim() });
-        } else {
-          console.warn(`[WARN] No transcription output from Whisper (exit ${code})`);
-        }
-      });
-    });
+    // const tempFilename = `${uuidv4()}.webm`;
+    // const tempFilePath = path.join(os.tmpdir(), tempFilename);
 
-    // const ffmpeg = spawn("ffmpeg", [
-    //   "-i", "pipe:0",         // Input from stdin
-    //   "-f", "wav",
-    //   "-ar", "16000",         // Sample rate 16 kHz (for Whisper)
-    //   "-ac", "1",             // Mono audio
-    //   "-loglevel", "error",   // Suppress extra logs
-    //   "pipe:1"                // Output to stdout
-    // ]);
-    // const py = spawn("python", ["transcribe_chunk.py"]);
+    // const buffer = Buffer.from(blob, "base64");
 
-    // ffmpeg.stdin.write(Buffer.from(blob));
-    // ffmpeg.stdin.end();
-
-    // ffmpeg.stdout.pipe(py.stdin);
-
-    
-    // ffmpeg.stderr.on("data",(data)=>{
-    //   console.error("[FFMPEG ERROR]:", data.toString());
-    // })
-
-    // py.stderr.on("data", (err) => {
-    //   console.error("[PYTHON ERROR]:", err.toString());
-    // });
-
-    // let result = "";
-    // py.stdout.on("data", (chunk) => {
-    //   result += chunk.toString();
-    //   // console.log("[TRANSCRIBED CHUNK]:",result)
-    // });
-
-    // py.on("close", (code) => {
-    //   if (result.trim()) {
-    //     console.log(`[TRANSCRIBED] ${userId}: ${result.trim()}`);
-    //     io.to(roomId).emit("transcription", { userId, transcript: result.trim() });
+    // fs.writeFile(tempFilePath, buffer, async (err) => {
+    //   if (err) {
+    //     console.error("[ERROR] Failed to write blob to temp file:", err);
+    //     return;
     //   }
-    // });
-
-
-    // try{
-    //   const formData = new FormData();
-    //   formData.append("file", Buffer.from(blob),{
-    //     filename: "chunk.wav",
-    //     contentType: "audio/wav"
+    //   fs.stat(tempFilePath, (err, stats) => {
+    //     if (err) {
+    //       console.error("[ERROR] Failed to stat file:", err);
+    //     } else {
+    //       console.log(`[INFO] Temp .webm size: ${stats.size} bytes`);
+    //       if (stats.size === 0) {
+    //         console.warn("[WARN] .webm file is empty – invalid recording or blob");
+    //       }
+    //     }
     //   });
 
-    //   const transcript = response.data.text
-    //   io.to(roomId).emit("transcription", {userId, transcript})
-    // } catch(err){
-    //   console.error("Transcription failed: ", err.message);
-    // }
+    //   const wavPath = tempFilePath.replace(".webm", ".wav");
+
+    //   ffmpeg(tempFilePath)
+    //   .inputOptions("-f","webm")
+    //     .audioChannels(1)
+    //     .audioFrequency(16000)
+    //     .format("wav")
+    //     .on("end", () => {
+
+    //     const py = spawn("python", ["transcribe_chunk.py", tempFilePath]);
+
+    //     let result = "";
+    //     py.stdout.on("data", (chunk) => {
+    //       result += chunk.toString();
+    //     });
+
+    //     py.stderr.on("data", (err) => {
+    //       console.error("[PYTHON ERROR]:", err.toString());
+    //     });
+
+    //     py.on("close", (code) => {
+    //       fs.unlink(tempFilePath, () => {}); // clean up
+    //       fs.unlink(wavPath, () => {});
+    //       if (result.trim()) {
+    //         console.log(`[TRANSCRIBED] ${userId}: ${result.trim()}`);
+    //         io.to(roomId).emit("transcription", { userId, transcript: result.trim() });
+    //       } else {
+    //         console.warn(`[WARN] No transcription output from Whisper (exit ${code})`);
+    //       }
+    //     });
+    //   }).on("error",(err)=>console.error("FFMPEG error: ",err))
+    //     .save(wavPath)
+    // });
+
   });
 
   socket.on("join room", ({roomID,username}) => {

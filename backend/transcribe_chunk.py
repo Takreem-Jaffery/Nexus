@@ -55,36 +55,34 @@
 #     text = transcribe_audio(input_data)
 #     print(text.strip())
 # transcribe_chunk.py
-import whisper
+# transcribe_chunk.py
 import sys
 import os
-import tempfile
-from pydub import AudioSegment
-from pydub.utils import which
+from faster_whisper import WhisperModel
 
-AudioSegment.converter = which("ffmpeg")
+def transcribe(audio_path):
+    model = WhisperModel("small", device="cpu", compute_type="int8")
 
-model = whisper.load_model("tiny")  # or tiny/medium as needed
+    segments, _ = model.transcribe(audio_path)
+    
+    if not segments:
+        print("[WHISPER WARN] No speech detected.", flush=True)
+        return
 
-def transcribe(file_path):
-    try:
-        audio = AudioSegment.from_file(file_path, format="webm")
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp_wav:
-            wav_path = tmp_wav.name
-            audio.export(wav_path, format="wav")
-        
-        result = model.transcribe(wav_path, fp16=False)
-        print(result["text"])
+    transcript = ""
+    for segment in segments:
+        transcript += segment.text.strip() + " "
 
-    except Exception as e:
-        print(f"[ERROR] {e}")
+    print(transcript.strip(), flush=True)
 
-    finally:
-        if os.path.exists(wav_path):
-            os.remove(wav_path)
-            
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Usage: python transcribe_chunk.py <input_file>")
+        print("Usage: python transcribe_chunk.py <audio_file_path>", flush=True)
         sys.exit(1)
-    transcribe(sys.argv[1])
+
+    audio_file = sys.argv[1]
+    if not os.path.exists(audio_file):
+        print(f"[ERROR] File not found: {audio_file}", flush=True)
+        sys.exit(1)
+
+    transcribe(audio_file)
