@@ -5,6 +5,65 @@
     justify-content: space-between;
     margin: 0px 20px;
 }
+.tts-btn{
+    padding: 15px;
+    width: 70px;
+    height: 70px;
+}
+.tts-btn svg{
+    width: 50px;
+    height: 50px;
+    transform: translateX(2px);
+}
+.tts-btn:hover{
+    width: 75px;
+    height: 75px;
+    transition: ease-in-out 0.5s;
+}
+.tts-area{
+    background-color: white;
+    border-top-left-radius: 30px;
+    border-top-right-radius: 30px;
+    padding: 0px 20px 20px 20px;
+    align-self: baseline;
+    transform: translateY(100%);
+    opacity: 0;
+    transition: transform 0.4s ease, opacity 0.4s ease;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 10;
+}
+.minimize-button{
+    border-radius: 0;
+    transform: translateX(-10px);
+    background: none;
+    margin: 3px;
+}
+.minimize-button:active{
+    border-radius: 30px;
+    transform: translateX(-10px);
+    /* background: none; */
+}
+.tts-input{
+    display: flex;
+    flex-direction: row;
+    padding-bottom: 10px;
+    width: 100%;
+}
+.tts-input input{
+    width: 100%;
+}
+.tts-input button{
+    background-color: #83DDF6;
+    border-radius: 10px;
+    margin-left: 10px;
+}
+.tts-area.show {
+    transform: translateY(0);
+    opacity: 1;
+}
 .bottom-bar{
     background-color: black;
     border-radius: 40px;
@@ -60,4 +119,8 @@ svg{
 .chat-btn svg{
     width: 40px;
     height: 40px;
+}
+.hidden{
+    display: none;
+    
 }
