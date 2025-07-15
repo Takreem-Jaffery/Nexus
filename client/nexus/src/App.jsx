@@ -1,7 +1,7 @@
 import {BrowserRouter, Route, Routes} from 'react-router-dom'
 import './App.css'
-import HomePage from './routes/HomePage'
-import Room from './routes/Room';
+import HomePage from './components/HomePage'
+import Room from './components/Room';
 
 function App() {
 

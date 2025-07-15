@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 
-export default function RemoteVideo({ stream, isCameraOff, username }) {
+export default function RemoteVideo({ stream, isCameraOff, username, isActive }) {
   const videoRef = useRef();
 
   useEffect(() => {
@@ -11,7 +11,7 @@ export default function RemoteVideo({ stream, isCameraOff, username }) {
   }, [stream]);
 
   return (
-    <div className="video-wrapper">
+    <div className={`video-wrapper ${isActive ? "active-speaker":""}`}>
       <div className="video-container">
         {!isCameraOff ? (
             

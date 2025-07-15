@@ -47,34 +47,10 @@ async function saveBase64ToWebm(base64Data, outputPath) {
   const buffer = Buffer.from(base64String, "base64");
   return fs.promises.writeFile(outputPath, buffer);
 
-  // await new Promise((res)=>setTimeout(res,200));
-
-  // fs.writeFile(outputPath, buffer, (err) => {
-  //   if (err) reject(err);
-  //   else resolve();
-  // });
-  // });
 }
 
 function convertWebmToWav(webmPath, wavPath) {
-  // fs.stat(webmPath, (err, stats) => {
-  //   if (err || stats.size === 0) {
-  //     console.warn("[WARN] Invalid or empty .webm chunk");
-  //   } else {
-  //     console.log(`[INFO] Temp .webm size: ${stats.size} bytes`);
-  //   }
-  // });
-  // return new Promise((resolve, reject) => {
-  //   const ffmpeg = require("fluent-ffmpeg");
-  //   ffmpeg(webmPath)
-  //     .inputOptions("-f", "webm")
-  //     .audioChannels(1)
-  //     .audioFrequency(16000)
-  //     .format("wav")
-  //     .on("end", () => resolve())
-  //     .on("error", (err) => reject(err))
-  //     .save(wavPath);
-  // });
+
   return new Promise((resolve, reject) => {
     const ffmpeg = require("fluent-ffmpeg");
     ffmpeg(webmPath)
@@ -161,66 +137,6 @@ io.on("connection", (socket) => {
     } finally {
       cleanupFiles(webmPath, wavPath);
     }
-    // if (!blob || blob.length ===0){
-    //   console.warn(`[WARN] Received empty blob from ${userId}`)
-    //   return;
-    // }
-    // const ffmpeg = require("fluent-ffmpeg");
-
-    // const tempFilename = `${uuidv4()}.webm`;
-    // const tempFilePath = path.join(os.tmpdir(), tempFilename);
-
-    // const buffer = Buffer.from(blob, "base64");
-
-    // fs.writeFile(tempFilePath, buffer, async (err) => {
-    //   if (err) {
-    //     console.error("[ERROR] Failed to write blob to temp file:", err);
-    //     return;
-    //   }
-    //   fs.stat(tempFilePath, (err, stats) => {
-    //     if (err) {
-    //       console.error("[ERROR] Failed to stat file:", err);
-    //     } else {
-    //       console.log(`[INFO] Temp .webm size: ${stats.size} bytes`);
-    //       if (stats.size === 0) {
-    //         console.warn("[WARN] .webm file is empty – invalid recording or blob");
-    //       }
-    //     }
-    //   });
-
-    //   const wavPath = tempFilePath.replace(".webm", ".wav");
-
-    //   ffmpeg(tempFilePath)
-    //   .inputOptions("-f","webm")
-    //     .audioChannels(1)
-    //     .audioFrequency(16000)
-    //     .format("wav")
-    //     .on("end", () => {
-
-    //     const py = spawn("python", ["transcribe_chunk.py", tempFilePath]);
-
-    //     let result = "";
-    //     py.stdout.on("data", (chunk) => {
-    //       result += chunk.toString();
-    //     });
-
-    //     py.stderr.on("data", (err) => {
-    //       console.error("[PYTHON ERROR]:", err.toString());
-    //     });
-
-    //     py.on("close", (code) => {
-    //       fs.unlink(tempFilePath, () => {}); // clean up
-    //       fs.unlink(wavPath, () => {});
-    //       if (result.trim()) {
-    //         console.log(`[TRANSCRIBED] ${userId}: ${result.trim()}`);
-    //         io.to(roomId).emit("transcription", { userId, transcript: result.trim() });
-    //       } else {
-    //         console.warn(`[WARN] No transcription output from Whisper (exit ${code})`);
-    //       }
-    //     });
-    //   }).on("error",(err)=>console.error("FFMPEG error: ",err))
-    //     .save(wavPath)
-    // });
 
   });
 

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {v1 as uuid} from "uuid";
 import "./HomePage.css"
 
@@ -7,15 +7,31 @@ const HomePage = ()=>{
 
     const [name, setName] = useState();
     const [roles,setRoles] = useState([]);
+    const [searchParams] = useSearchParams();
+    const redirectRoom = searchParams.get("redirectRoom");
+    const [meetingCode, setMeetingCode] = useState("");
+
     const navigate = useNavigate()
     function create(){
         const id = uuid(); //create an id
 
+        if (!name) {
+            alert("Please enter your name");
+            return;
+        }
         sessionStorage.setItem("username",name);
         sessionStorage.setItem("role",JSON.stringify(roles));
         navigate(`/room/${id}`); //go to that room
     }
-
+    function joinMeeting(){
+        if(!name){
+            alert("Please enter your name before joining a meeting");
+            return
+        }
+        sessionStorage.setItem("username",name)
+        sessionStorage.setItem("role",JSON.stringify(roles))
+        navigate(`/room/${meetingCode}`); //joining the room
+    }
     function handleRoleChange(e) {
         const value = e.target.value;
         setRoles(prev=>
@@ -40,8 +56,8 @@ const HomePage = ()=>{
             <button onClick={create} className="create-meeting-btn">Create Meeting</button>
       
             <div className="join-meeting-div">
-                <input type="text" placeholder="Meeting Code" className="meeting-code"></input>
-                <button className="join-meeting-btn">Join Meeting</button>
+                <input type="text" placeholder="Meeting Code" className="meeting-code" value={meetingCode} onChange={(e)=>setMeetingCode(e.target.value)}></input>
+                <button className="join-meeting-btn" onClick={joinMeeting}>Join Meeting</button>
             </div>
         </div>
         );

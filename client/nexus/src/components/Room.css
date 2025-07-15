@@ -171,3 +171,8 @@
     position: absolute;
     right: 0;
 }
+.active-speaker{
+    box-shadow: 0 0 20px 4px #ff00fb;
+    border: 3px solid #ff00fb;
+    transition: box-shadow 0.3s ease, border 0.3s ease;
+}
