@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import "./BottomBar.css"
 import { useState } from "react";
 
+//added tts
 function BottomBar({onEndCall,onToggleMute,isMuted,onToggleCamera, isCameraOff, chatIsOpen, setChatIsOpen}){
     const [ttsOn, setTtsOn] = useState(false)
 
