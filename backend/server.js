@@ -101,6 +101,24 @@ function cleanupFiles(...paths) {
   paths.forEach((path) => fs.existsSync(path) && fs.unlinkSync(path));
 }
 
+function generateTTS(text, outPath){
+  return new Promise((resolve, reject)=>{
+    const py = spawn("python", ["text_to_speech.py", text, outPath]);
+
+    let stderr = "";
+    py.stderr.on("data", (data) => {
+      stderr += data.toString();
+    });
+
+    py.on("close", (code) => {
+      if (code !== 0) {
+        reject(`[TTS ERROR] Python exited with code ${code}\n${stderr}`);
+      } else {
+        resolve();
+      }
+    });
+  })
+}
 io.on("connection", (socket) => {
   console.log(`[INFO] ${socket.id} connected`);
 
@@ -140,6 +158,27 @@ io.on("connection", (socket) => {
 
   });
 
+  //Text to speech
+  socket.on("tts-message",async({text,roomId,userId})=>{
+    try{
+      const filename = `${uuidv4()}.wav`;
+      const outputPath = path.join(os.tmpdir(), filename);
+
+      await generateTTS(text, outputPath)
+
+      const audioBuffer = fs.readFileSync(outputPath);
+      const base64Audio = audioBuffer.toString("base64");
+
+      io.to(roomId).emit("tts-play", {
+        userId,
+        audio: `data:audio/wav;base64,${base64Audio}`
+      });
+
+      fs.unlinkSync(outputPath)
+    } catch(err){
+      console.error("[TTS ERROR] ", err);
+    }
+  })
   socket.on("join room", ({roomID,username}) => {
     console.log(`[SERVER] ${socket.id} joined room ${roomID} as ${username}`);
     users[socket.id] = {username, roomID}

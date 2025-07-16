@@ -39,7 +39,10 @@ export default function Room() {
   //transcription
   const [liveTranscript, setLiveTranscript] = useState("");
 
-  
+  //text to speech
+  const [ttsText, setTtsText] = useState("");
+
+    
   useEffect(() => {
     if (!username) {
       navigate(`/?redirectRoom=${roomID}`);
@@ -72,17 +75,6 @@ export default function Room() {
         }
       });
 
-
-      // socket.on("user joined", async ({id, username}) => {
-      //   // if (!id) return;
-      //   console.log("[INFO] New user joined:", id);
-      //   // await callUser(id);
-      //   if (!remoteStreams.find((user) => user.id === id)) {
-      //     setRemoteStreams((prev) => [...prev, { id, stream: null, username }]);
-      //   }
-      //   console.log(remoteStreams)
-        
-      // });
       socket.on("user joined", async ({ id, username }) => {
         setRemoteStreams((prev) => {
           const exists = prev.some((user) => user.id === id);
@@ -159,6 +151,10 @@ export default function Room() {
         // }
       });
 
+      socket.on("tts-play",({userId, audio})=>{
+        const audioElem = new Audio(audio);
+        audioElem.play().catch(console.error);
+      })
     }
 
     init();
@@ -200,22 +196,7 @@ export default function Room() {
     peerConnection.ontrack = (event) => {
       const stream = event.streams[0]
       if(!stream) return
-      // setRemoteStreams((prev) => {
-      //   const exists = prev.some((user)=>user.id===userId);
-        
-      //   if(!exists){
-      //     return [...prev, { id: userId, stream, username: "Unknown" }];
-      //   }
-      //   return prev.map((user) =>
-      //     user.id === userId ? { ...user, stream } : user
-      //   )
-      // });
-      // console.log(`[ontrack] Received stream from ${userId}`, stream);
-      // setRemoteStreams((prev) =>
-      //   prev.map((user) =>
-      //     user.id === userId ? { ...user, stream } : user
-      //   )
-      // );
+      
       setRemoteStreams((prev) => {
         const exists = prev.some((user) => user.id === userId);
         if (!exists) {
@@ -298,6 +279,17 @@ export default function Room() {
     }
   }
 
+  function handleTtsSend(){
+    if(!ttsText.trim()) return;
+    const payload = {
+      text: ttsText,
+      roomId: roomID,
+      userId: socketRef.current?.id
+    }
+    socketRef.current.emit("tts-message",payload);
+    setTtsText("")
+  }
+
   const socket = socketRef.current;
   const userId = socket?.id;
   useMicTranscription(socket, roomID, userId);
@@ -351,7 +343,10 @@ export default function Room() {
           onToggleCamera={toggleCamera}
           isCameraOff={isCameraOff}
           chatIsOpen={chatIsOpen}
-          setChatIsOpen={setChatIsOpen}/></div>
+          setChatIsOpen={setChatIsOpen}
+          ttsText={ttsText}
+          setTtsText={setTtsText}
+          handleTtsSend={handleTtsSend}/></div>
     </div>
   <div className={`chat-area ${chatIsOpen?"":"hidden"}`}>
       <Chat socket={socketRef.current} roomId={roomID} username={username} chatIsOpen={chatIsOpen} setChatIsOpen={setChatIsOpen}/>
