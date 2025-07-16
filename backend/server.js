@@ -101,23 +101,41 @@ function cleanupFiles(...paths) {
   paths.forEach((path) => fs.existsSync(path) && fs.unlinkSync(path));
 }
 
-function generateTTS(text, outPath){
-  return new Promise((resolve, reject)=>{
-    const py = spawn("python", ["text_to_speech.py", text, outPath]);
+async function generateTTS(text, outPath){
+  try{
+    const response = await axios.post("http://localhost:5005/synthesize",{text},{
+      responseType:"stream"
+    })
 
-    let stderr = "";
-    py.stderr.on("data", (data) => {
-      stderr += data.toString();
+    const writer = fs.createWriteStream(outPath);
+    response.data.pipe(writer);
+
+    return new Promise((resolve, reject)=>{
+      writer.on("finish",resolve);
+      writer.on("error", reject);
     });
 
-    py.on("close", (code) => {
-      if (code !== 0) {
-        reject(`[TTS ERROR] Python exited with code ${code}\n${stderr}`);
-      } else {
-        resolve();
-      }
-    });
-  })
+  } catch(err){
+    console.error("[TTS ERROR] Failed HTTP Request: ", err)
+    throw err;
+  }
+  //Functionality for child process
+  // return new Promise((resolve, reject)=>{
+  //   const py = spawn("python", ["text_to_speech.py", text, outPath]);
+
+  //   let stderr = "";
+  //   py.stderr.on("data", (data) => {
+  //     stderr += data.toString();
+  //   });
+
+  //   py.on("close", (code) => {
+  //     if (code !== 0) {
+  //       reject(`[TTS ERROR] Python exited with code ${code}\n${stderr}`);
+  //     } else {
+  //       resolve();
+  //     }
+  //   });
+  // })
 }
 io.on("connection", (socket) => {
   console.log(`[INFO] ${socket.id} connected`);

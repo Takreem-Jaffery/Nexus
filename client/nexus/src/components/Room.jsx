@@ -296,7 +296,7 @@ export default function Room() {
   
 
   return (<div className="outer-div">
-    <div className={`video-area ${chatIsOpen?"":"full-width"}`}>
+    <div className={`video-area ${chatIsOpen?"chat-open":""}`}>
         <div className={`room-grid ${remoteStreams.length === 0 ? "single" : ""}`}>
           <div className="video-wrapper">
             <div className="video-container">
@@ -348,7 +348,7 @@ export default function Room() {
           setTtsText={setTtsText}
           handleTtsSend={handleTtsSend}/></div>
     </div>
-  <div className={`chat-area ${chatIsOpen?"":"hidden"}`}>
+  <div className={`chat-area ${chatIsOpen?"show":""}`}>
       <Chat socket={socketRef.current} roomId={roomID} username={username} chatIsOpen={chatIsOpen} setChatIsOpen={setChatIsOpen}/>
     </div>
   </div>
