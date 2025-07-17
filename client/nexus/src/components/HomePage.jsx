@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {v1 as uuid} from "uuid";
 import "./HomePage.css"
+// import NexusLogo from "../assets/NexusLogo.svg?react";
+
 
 const HomePage = ()=>{
 
@@ -39,7 +41,18 @@ const HomePage = ()=>{
         );
     }
 
-    return (
+    return (<div className="home-parent">
+        <div className="nexus-logo">
+            <p>Ne&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;us</p>
+            <video
+            src="/NexusLogoAnim.mp4"
+            autoPlay
+            muted
+            loop
+            playsInline
+            />
+
+        </div>
         <div className="home-card">
             <p>Name</p>
             <input type="text" className="name" placeholder="Enter your name here" onChange={(e)=>setName(e.target.value)}></input>
@@ -60,7 +73,7 @@ const HomePage = ()=>{
                 <button className="join-meeting-btn" onClick={joinMeeting}>Join Meeting</button>
             </div>
         </div>
-        );
+    </div>);
     
 }
 
