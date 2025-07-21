@@ -105,9 +105,52 @@
     font-size: 30px;
     text-shadow: 2px 2px 4px rgba(0,0,0,0.6);
 }
+.transcript-overlay{
+    background-color: #585858;
+    height: 80px;
+    /*width: 90%;
+    margin: 0px 0px 10px 0px; */
+    position: absolute;
+    bottom: 120px;
+    left: 10px;
+    right: 10px;
+    max-height: 200px;
+    overflow-y: auto;
+    /* background: rgba(0,0,0,0.6); */
+    border-radius: 8px;
+    padding: 10px;
+    color: white;
+    font-size: 14px;
+    line-height: 1.5;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    transition: all 0.3s ease-in-out;
+}
+.hide{
+    display: none;
+}
+.transcript-line {
+    animation: slideUp 0.3s ease-out;
+    color: rgb(196, 196, 29);
+    font-size: medium;
+    outline-color: #000;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 .transcript-overlay pre{
     color: rgb(196, 196, 29);
     font-size: medium;
+    outline-color: #000;
 }
 .video-placeholder {
     position: relative;

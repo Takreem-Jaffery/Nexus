@@ -41,7 +41,8 @@ export default function Room() {
 
   //text to speech
   const [ttsText, setTtsText] = useState("");
-
+  const [ttsAudioMap, setTtsAudioMap] = useState({});
+  const [isCaptionOn, setIsCaptionOn] = useState(true)
     
   useEffect(() => {
     if (!username) {
@@ -119,6 +120,17 @@ export default function Room() {
       socket.on("user left",(id)=>{
         console.log("[INFO] User left:", id);
 
+        //stop TTS audio
+        if (ttsAudioMap[id]) {
+          ttsAudioMap[id].pause();
+          ttsAudioMap[id].currentTime = 0;
+          setTtsAudioMap(prev => {
+            const updated = { ...prev };
+            delete updated[id];
+            return updated;
+          });
+        }
+
         const peerConnection = peerConnections.current[id];
         if (peerConnection) {
           peerConnection.close();
@@ -146,15 +158,35 @@ export default function Room() {
 
       socket.on("transcription", ({ userId, transcript }) => {
         // if (userId === socket.id) {
-          setLiveTranscript(prev=>`${prev}\n[${username}]: ${transcript}`);
-          setActiveSpeakerId(userId);
+        setLiveTranscript(prev=>`${prev}\n[${username}]: ${transcript}`);
+        setActiveSpeakerId(userId);
+        setTimeout(() => {
+          setActiveSpeakerId(null);
+        }, audioElem.duration ? audioElem.duration * 1000 : 3000); // fallback to 3s
         // }
       });
 
       socket.on("tts-play",({userId, audio})=>{
         const audioElem = new Audio(audio);
         audioElem.play().catch(console.error);
+
+        setActiveSpeakerId(userId)
+
+        setTtsAudioMap(prev=>({...prev,[userId]:audio}))
+
+        setTimeout(() => {
+          setActiveSpeakerId(null);
+        }, audioElem.duration ? audioElem.duration * 1000 : 3000); // fallback to 3s
       })
+
+      socket.on("tts-caption", ({ userId, username:senderName, text }) => {
+        const sender = userId === socket.id 
+          ? username 
+          : senderName||remoteStreams.find(user => user.id === userId)?.username || "Anonymous";
+
+        setLiveTranscript(prev => `${prev}\n[${sender} 🔊]: ${text}`);
+      });
+
     }
 
     init();
@@ -279,6 +311,12 @@ export default function Room() {
     }
   }
 
+  function toggleCaption(){
+
+    setIsCaptionOn(!isCaptionOn)
+    
+  }
+
   function handleTtsSend(){
     if(!ttsText.trim()) return;
     const payload = {
@@ -293,6 +331,14 @@ export default function Room() {
   const socket = socketRef.current;
   const userId = socket?.id;
   useMicTranscription(socket, roomID, userId);
+  const transcriptRef = useRef();
+
+  useEffect(() => {
+    if (transcriptRef.current) {
+      transcriptRef.current.scrollTop = transcriptRef.current.scrollHeight;
+    }
+  }, [liveTranscript]);
+
   
 
   return (<div className="outer-div">
@@ -333,8 +379,11 @@ export default function Room() {
           )}
           
         </div>
-        <div className="transcript-overlay">
-          {liveTranscript && <pre>{liveTranscript}</pre>}
+        <div className={`${isCaptionOn?"transcript-overlay":"hide"}`} ref={transcriptRef}>
+          {/* {liveTranscript && <pre>{liveTranscript}</pre>} */}
+          {liveTranscript.split('\n').map((line, index) => (
+            <div key={index} className="transcript-line">{line}</div>
+          ))}
         </div>
         <div className="bottom-area"><BottomBar 
           onEndCall={endCall} 
@@ -346,7 +395,9 @@ export default function Room() {
           setChatIsOpen={setChatIsOpen}
           ttsText={ttsText}
           setTtsText={setTtsText}
-          handleTtsSend={handleTtsSend}/></div>
+          handleTtsSend={handleTtsSend}
+          onToggleCaption={toggleCaption}
+          isCaptionOn={isCaptionOn}/></div>
     </div>
   <div className={`chat-area ${chatIsOpen?"show":""}`}>
       <Chat socket={socketRef.current} roomId={roomID} username={username} chatIsOpen={chatIsOpen} setChatIsOpen={setChatIsOpen}/>

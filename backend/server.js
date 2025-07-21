@@ -187,10 +187,18 @@ io.on("connection", (socket) => {
       const audioBuffer = fs.readFileSync(outputPath);
       const base64Audio = audioBuffer.toString("base64");
 
+      //emit audio
       io.to(roomId).emit("tts-play", {
         userId,
         audio: `data:audio/wav;base64,${base64Audio}`
       });
+
+      //emit caption
+      io.to(roomId).emit("tts-caption",{
+        userId:socket.id,
+        username: users[socket.id]?.username || "Anonymous",
+        text
+      })
 
       fs.unlinkSync(outputPath)
     } catch(err){
