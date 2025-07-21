@@ -3,19 +3,29 @@ import { useEffect, useRef } from "react";
 export default function RemoteVideo({ stream, isCameraOff, username, isActive }) {
   const videoRef = useRef();
 
+  // useEffect(() => {
+  //   if (videoRef.current && stream) {
+  //     videoRef.current.srcObject = stream;
+  //     console.log(`[RemoteVideo] Rendered with stream`, stream)
+  //   }
+  // }, [stream]);
   useEffect(() => {
-    if (videoRef.current && stream) {
-      videoRef.current.srcObject = stream;
-      console.log(`[RemoteVideo] Rendered with stream`, stream)
+    if (videoRef.current) {
+      if (stream && !isCameraOff) {
+        videoRef.current.srcObject = stream;
+      } else {
+        videoRef.current.srcObject = null; // Remove frozen video
+      }
     }
-  }, [stream]);
+  }, [stream, isCameraOff]);
+
 
   return (
     <div className={`video-wrapper ${isActive ? "active-speaker":""}`}>
       <div className="video-container">
         {!isCameraOff ? (
             
-          <video autoPlay playsInline ref={videoRef} />
+          <video autoPlay playsInline ref={videoRef} className="remote-video"/>
         ) : (
           <div className="video-placeholder">
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">

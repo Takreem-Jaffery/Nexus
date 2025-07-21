@@ -295,21 +295,43 @@ export default function Room() {
       }
     }
   }
-  function toggleCamera(){
-    if(userStream.current){
-      const videoTrack = userStream.current.getVideoTracks()[0]
-      if(videoTrack){
-        videoTrack.enabled = !videoTrack.enabled;
-        const newCameraState = !videoTrack.enabled;
-        setIsCameraOff(!videoTrack.enabled)
+  // function toggleCamera(){
+  //   if(userStream.current){
+  //     const videoTrack = userStream.current.getVideoTracks()[0]
+  //     if(videoTrack){
+  //       videoTrack.enabled = !videoTrack.enabled;
+  //       const newCameraState = !videoTrack.enabled;
+  //       setIsCameraOff(!videoTrack.enabled)
 
-        socketRef.current.emit("camera-toggle",{
+        
+
+  //       socketRef.current.emit("camera-toggle",{
+  //         userId: socketRef.current.id,
+  //         isCameraOff: newCameraState
+  //       });
+  //     }
+  //   }
+  // }
+  function toggleCamera() {
+    if (userStream.current) {
+      const videoTrack = userStream.current.getVideoTracks()[0];
+      if (videoTrack) {
+        // Toggle track
+        const newEnabledState = !videoTrack.enabled;
+        videoTrack.enabled = newEnabledState;
+
+        // Update local state
+        setIsCameraOff(!newEnabledState);
+
+        // Notify others
+        socketRef.current.emit("camera-toggle", {
           userId: socketRef.current.id,
-          isCameraOff: newCameraState
+          isCameraOff: !newEnabledState
         });
       }
     }
   }
+
 
   function toggleCaption(){
 
@@ -338,30 +360,33 @@ export default function Room() {
       transcriptRef.current.scrollTop = transcriptRef.current.scrollHeight;
     }
   }, [liveTranscript]);
-
   
+  useEffect(() => {
+    if (!isCameraOff && userVideo.current && userStream.current) {
+      userVideo.current.srcObject = userStream.current;
+    }
+  }, [isCameraOff]);
 
   return (<div className="outer-div">
     <div className={`video-area ${chatIsOpen?"chat-open":""}`}>
         <div className={`room-grid ${remoteStreams.length === 0 ? "single" : ""}`}>
           <div className="video-wrapper">
             <div className="video-container">
-              <video 
+              {!isCameraOff? (<video 
                 autoPlay 
                 playsInline 
                 muted 
                 ref={userVideo} 
-                className={`${isCameraOff?"camera-off":undefined} ${activeSpeakerId === socket?.id ? "active-speaker":""}`} />
-              {isMuted && (
-                <div className="mute-overlay">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="currentColor" d="M19 11c0 1.19-.34 2.3-.9 3.28l-1.23-1.23c.27-.62.43-1.31.43-2.05zm-4 .16L9 5.18V5a3 3 0 0 1 3-3a3 3 0 0 1 3 3zM4.27 3L21 19.73L19.73 21l-4.19-4.19c-.77.46-1.63.77-2.54.91V21h-2v-3.28c-3.28-.49-6-3.31-6-6.72h1.7c0 3 2.54 5.1 5.3 5.1c.81 0 1.6-.19 2.31-.52l-1.66-1.66L12 14a3 3 0 0 1-3-3v-.72L3 4.27z"/></svg>
-                </div>
-              )}
-              {isCameraOff&&(
+                className={`${activeSpeakerId === socket?.id ? "active-speaker":""}`} />
+              ):(<div className="video-placeholder-self">
                 <div className="camera-overlay">
                   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="currentColor" d="M3.41 1.86L2 3.27L4.73 6H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h12c.21 0 .39-.08.55-.18L19.73 21l1.41-1.41l-8.86-8.86zM5 16V8h1.73l8 8zm10-8v2.61l6 6V6.5l-4 4V7a1 1 0 0 0-1-1h-5.61l2 2z"/></svg>
                 </div>
-                
+                </div>)}
+                {isMuted && (
+                <div className="mute-overlay">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="currentColor" d="M19 11c0 1.19-.34 2.3-.9 3.28l-1.23-1.23c.27-.62.43-1.31.43-2.05zm-4 .16L9 5.18V5a3 3 0 0 1 3-3a3 3 0 0 1 3 3zM4.27 3L21 19.73L19.73 21l-4.19-4.19c-.77.46-1.63.77-2.54.91V21h-2v-3.28c-3.28-.49-6-3.31-6-6.72h1.7c0 3 2.54 5.1 5.3 5.1c.81 0 1.6-.19 2.31-.52l-1.66-1.66L12 14a3 3 0 0 1-3-3v-.72L3 4.27z"/></svg>
+                </div>
               )}
               <div className="name-overlay">
                 <p>{!username || username==="undefined"? "Anonymous": username}</p>    
