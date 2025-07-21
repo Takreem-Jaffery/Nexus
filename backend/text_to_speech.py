@@ -2,12 +2,25 @@ from TTS.api import TTS
 import sys
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse
+from fastapi.middleware.cors import CORSMiddleware 
 from pydantic import BaseModel
 import uuid
 import os
 import tempfile
 
 app = FastAPI()
+
+origins = [
+    "https://nexus-46el.onrender.com"
+]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,           # or use ["*"] for dev
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 tts = TTS(model_name="tts_models/en/ljspeech/tacotron2-DDC", progress_bar=False, gpu=False)
 

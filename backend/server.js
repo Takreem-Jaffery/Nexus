@@ -9,7 +9,10 @@ const formData = require("form-data")
 const { v4: uuidv4 } = require("uuid");
 const os = require("os");
 
-require("dotenv").config();
+if (process.env.NODE_ENV !== 'production') {
+  require('dotenv').config();
+}
+
 
 const app = express();
 app.use(cors({ origin: process.env.CORS_ORIGIN }));
