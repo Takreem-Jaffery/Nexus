@@ -9,8 +9,10 @@ const formData = require("form-data")
 const { v4: uuidv4 } = require("uuid");
 const os = require("os");
 
+require("dotenv").config();
+
 const app = express();
-app.use(cors({ origin: "http://localhost:5173" }));
+app.use(cors({ origin: process.env.CORS_ORIGIN }));
 
 const fs = require("fs")
 const path = require("path")
@@ -291,8 +293,8 @@ io.on("connection", (socket) => {
   
 });
 
+const PORT = process.env.PORT || 8000;
 
-
-server.listen(8000, () => {
+server.listen(PORT, () => {
   console.log("[INFO] Server running on http://localhost:8000");
 });
