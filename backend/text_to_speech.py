@@ -15,20 +15,22 @@ origins = [
 ]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,           # or use ["*"] for dev
+    allow_origins=origins,         
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 
-tts = TTS(model_name="tts_models/en/ljspeech/tacotron2-DDC", progress_bar=False, gpu=False)
+# tts = TTS(model_name="tts_models/en/ljspeech/tacotron2-DDC", progress_bar=False, gpu=False)
 
 class TTSRequest(BaseModel):
     text: str
 
 @app.post("/synthesize")
 async def synthesize(req:TTSRequest):
+    tts = TTS(model_name="tts_models/en/ljspeech/tacotron2-DDC", progress_bar=False, gpu=False)
+
     text = req.text
 
     temp_dir = tempfile.gettempdir()
@@ -36,6 +38,11 @@ async def synthesize(req:TTSRequest):
     
     tts.tts_to_file(text=text, file_path=out_path)
     return FileResponse(out_path, media_type="audio/wav", filename="tts.wav")
+
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.environ.get("PORT", 8000))  # Render sets PORT automatically
+    uvicorn.run("text_to_speech:app", host="0.0.0.0", port=port)
 
 #Functionality for TTS with Child Process
 # def synthesize(text, out_path="tts_output.wav"):

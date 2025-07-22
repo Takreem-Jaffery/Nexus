@@ -405,7 +405,6 @@ export default function Room() {
           
         </div>
         <div className={`${isCaptionOn?"transcript-overlay":"hide"}`} ref={transcriptRef}>
-          {/* {liveTranscript && <pre>{liveTranscript}</pre>} */}
           {liveTranscript.split('\n').map((line, index) => (
             <div key={index} className="transcript-line">{line}</div>
           ))}
