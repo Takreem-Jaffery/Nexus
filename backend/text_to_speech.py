@@ -22,13 +22,15 @@ app.add_middleware(
 )
 
 
-tts = TTS(model_name="tts_models/en/ljspeech/tacotron2-DDC", progress_bar=False, gpu=False)
+# tts = TTS(model_name="tts_models/en/ljspeech/tacotron2-DDC", progress_bar=False, gpu=False)
 
 class TTSRequest(BaseModel):
     text: str
 
 @app.post("/synthesize")
 async def synthesize(req:TTSRequest):
+    tts = TTS(model_name="tts_models/en/ljspeech/tacotron2-DDC", progress_bar=False, gpu=False)
+
     text = req.text
 
     temp_dir = tempfile.gettempdir()
