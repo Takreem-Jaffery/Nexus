@@ -17,6 +17,8 @@ const ICE_SERVERS = [
   },
 ];
 
+require('dotenv').config();
+
 export default function Room() {
   const navigate = useNavigate();
   const { roomID } = useParams();
@@ -55,7 +57,9 @@ export default function Room() {
       userStream.current = stream;
       
 
-      const socket = io.connect("http://localhost:8000");
+      const socket = io.connect(process.env.REACT_APP_BACKEND_URL, {
+        transports: ["websocket"], // optional but recommended
+      });
       socketRef.current = socket;
 
       socket.on("all users", async (userList) => {
