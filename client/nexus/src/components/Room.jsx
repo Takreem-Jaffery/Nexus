@@ -60,7 +60,11 @@ export default function Room() {
       const socket = io.connect("https://nexus-web-56ib.onrender.com", {
         transports: ["websocket", "polling"], // optional but recommended
         secure: true,
-        path: "/socket.io"
+        path: "/socket.io",
+        forceNew: true,
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 2000
       });
       socketRef.current = socket;
 
