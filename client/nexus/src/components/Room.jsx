@@ -57,7 +57,7 @@ export default function Room() {
       
       console.log("Connecting to", process.env.REACT_APP_BACKEND_URL);
 
-      const socket = io.connect(process.env.REACT_APP_BACKEND_URL, {
+      const socket = io.connect("https://nexus-web-56ib.onrender.com", {
         transports: ["websocket", "polling"], // optional but recommended
         secure: true,
         path: "/socket.io"
