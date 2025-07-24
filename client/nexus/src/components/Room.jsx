@@ -17,7 +17,6 @@ const ICE_SERVERS = [
   },
 ];
 
-require('dotenv').config();
 
 export default function Room() {
   const navigate = useNavigate();
