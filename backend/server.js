@@ -26,9 +26,10 @@ const upload = multer({dest: "uploads/"});
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "*",
+    origin: process.env.CORS_ORIGIN,
     methods: ["GET", "POST"],
   },
+  transports: ["websocket", "polling"], 
 });
 
 const rooms = {};
@@ -298,6 +299,6 @@ io.on("connection", (socket) => {
 
 const PORT = process.env.PORT || 8000;
 
-server.listen(PORT, () => {
-  console.log("[INFO] Server running on http://localhost:8000");
+server.listen(PORT, '0.0.0.0', () => {
+  console.log("[INFO] Server running on ", PORT);
 });
