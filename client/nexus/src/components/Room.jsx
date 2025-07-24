@@ -114,8 +114,18 @@ export default function Room() {
         }
         if (peerConnection.signalingState !== "have-local-offer") {
             console.warn("[WARN] Not in have-local-offer state, ignoring answer");
-            return;
-        }
+            const waitForOffer = new Promise((resolve) => {
+              const interval = setInterval(() => {
+                if (peerConnection.signalingState === "have-local-offer") {
+                  clearInterval(interval);
+                  resolve();
+                }
+              }, 100); // poll every 100ms
+              setTimeout(() => clearInterval(interval), 3000); // timeout after 3s
+            });
+
+            await waitForOffer;
+          }
 
         await peerConnection.setRemoteDescription(new RTCSessionDescription(sdp));
       });
@@ -221,13 +231,18 @@ export default function Room() {
     userStream.current.getTracks().forEach((track) =>
       peerConnection.addTrack(track, userStream.current)
     );
-    const offer = await peerConnection.createOffer();
-    await peerConnection.setLocalDescription(offer);
-    socketRef.current.emit("offer", {
-      target: userId,
-      caller: socketRef.current.id,
-      sdp: peerConnection.localDescription,
-    });
+    try{
+      const offer = await peerConnection.createOffer();
+      await peerConnection.setLocalDescription(offer);
+      socketRef.current.emit("offer", {
+        target: userId,
+        caller: socketRef.current.id,
+        sdp: peerConnection.localDescription,
+      });
+    
+    } catch(err){
+      console.error("[ERR] Error during offer creation: ", err)
+    }
   }
 
   function createPeerConnection(userId) {
@@ -258,12 +273,21 @@ export default function Room() {
         });
       }
     };
+
+    console.log("[DEBUG] Signaling state after PC creation:", peerConnection.signalingState);
+
     return peerConnection;
   }
 
   async function handleReceiveCall(caller, sdp) {
+    console.log("[DEBUG] Received offer from", caller);
+    console.log("[DEBUG] Signaling state before setting remote:", peerConnection.signalingState);
+
+
     const peerConnection = createPeerConnection(caller);
     await peerConnection.setRemoteDescription(new RTCSessionDescription(sdp));
+
+    console.log("[DEBUG] Signaling state after setting remote:", peerConnection.signalingState);
     userStream.current.getTracks().forEach((track) =>
       peerConnection.addTrack(track, userStream.current)
     );
