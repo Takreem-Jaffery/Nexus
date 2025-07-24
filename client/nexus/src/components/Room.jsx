@@ -55,9 +55,12 @@ export default function Room() {
       userVideo.current.srcObject = stream;
       userStream.current = stream;
       
+      console.log("Connecting to", process.env.REACT_APP_BACKEND_URL);
 
       const socket = io.connect(process.env.REACT_APP_BACKEND_URL, {
-        transports: ["websocket"], // optional but recommended
+        transports: ["websocket", "polling"], // optional but recommended
+        secure: true,
+        path: "/socket.io"
       });
       socketRef.current = socket;
 
