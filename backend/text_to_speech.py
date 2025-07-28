@@ -8,10 +8,13 @@ import uuid
 import os
 import tempfile
 
+# run with uvicorn text_to_speech:app --host 0.0.0.0 --port 5005
+
 app = FastAPI()
 
 origins = [
-    "https://nexus-46el.onrender.com"
+    "https://nexus-46el.onrender.com",
+    "http://localhost:5173"
 ]
 app.add_middleware(
     CORSMiddleware,
@@ -44,7 +47,8 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))  # Render sets PORT automatically
     uvicorn.run("text_to_speech:app", host="0.0.0.0", port=port)
 
-#Functionality for TTS with Child Process
+# Functionality for TTS with Child Process
+# it works but its slower
 # def synthesize(text, out_path="tts_output.wav"):
 #     tts.tts_to_file(text=text, file_path=out_path)
 

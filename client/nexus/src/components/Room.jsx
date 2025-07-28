@@ -43,7 +43,7 @@ export default function Room() {
   //text to speech
   const [ttsText, setTtsText] = useState("");
   const [ttsAudioMap, setTtsAudioMap] = useState({});
-  const [isCaptionOn, setIsCaptionOn] = useState(true)
+  const [isCaptionOn, setIsCaptionOn] = useState(false)
     
   useEffect(() => {
     if (!username) {
@@ -52,6 +52,23 @@ export default function Room() {
     }
     async function init() {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+      
+      //apply role
+      const hasMuteRole = userRole?.includes("mute");
+      const hasDeafRole = userRole?.includes("deaf");
+
+      if(hasMuteRole){
+        const audioTrack = stream.getAudioTracks()[0];
+        if (audioTrack) {
+          audioTrack.enabled = false;
+          setIsMuted(true);
+        }
+      }
+      if (hasDeafRole)
+      {
+        setIsCaptionOn(true);
+      }
+
       userVideo.current.srcObject = stream;
       userStream.current = stream;
       

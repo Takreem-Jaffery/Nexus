@@ -9,9 +9,9 @@ const formData = require("form-data")
 const { v4: uuidv4 } = require("uuid");
 const os = require("os");
 
-if (process.env.NODE_ENV !== 'production') {
+// if (process.env.NODE_ENV !== 'production') {
   require('dotenv').config();
-}
+// }
 
 
 const app = express();

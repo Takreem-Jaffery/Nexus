@@ -41,7 +41,8 @@ const HomePage = ()=>{
         );
     }
 
-    return (<div className="home-parent">
+    return (
+    <div className="home-parent">
         <div className="nexus-logo">
             <p>Ne&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;us</p>
             <video
@@ -73,6 +74,7 @@ const HomePage = ()=>{
                 <button className="join-meeting-btn" onClick={joinMeeting}>Join Meeting</button>
             </div>
         </div>
+        
     </div>);
     
 }
