@@ -314,10 +314,11 @@ export default function Room() {
 
   async function handleReceiveCall(caller, sdp) {
     console.log("[DEBUG] Received offer from", caller);
+    
+    const peerConnection = createPeerConnection(caller);
     console.log("[DEBUG] Signaling state before setting remote:", peerConnection.signalingState);
 
 
-    const peerConnection = createPeerConnection(caller);
     await peerConnection.setRemoteDescription(new RTCSessionDescription(sdp));
 
     if (pendingCandidates.current[caller]) {

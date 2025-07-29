@@ -1,4 +1,4 @@
-FROM python:3.10-slim
+FROM pytorch/pytorch:2.1.0-cpu
 
 # Set work directory
 WORKDIR /app
@@ -7,11 +7,12 @@ WORKDIR /app
 COPY . .
 
 # Install dependencies
-RUN pip install --upgrade pip && pip install --no-cache-dir -r requirements.txt
+RUN pip install --upgrade pip
+RUN pip install --no-cache-dir fastapi uvicorn pydantic TTS
 
 
 # Expose port
-EXPOSE 8000
+EXPOSE 5005
 
 # Run FastAPI with Uvicorn
-CMD ["uvicorn", "text_to_speech:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "text_to_speech:app", "--host", "0.0.0.0", "--port", "5005"]
