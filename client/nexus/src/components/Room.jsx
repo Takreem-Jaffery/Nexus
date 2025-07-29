@@ -24,7 +24,6 @@ export default function Room() {
   const userVideo = useRef();
   const [remoteStreams, setRemoteStreams] = useState([]);
 
-  let isInitiator = false;
 
   const socketRef = useRef();
   const userStream = useRef();
@@ -317,8 +316,13 @@ export default function Room() {
   }
 
   function createPeerConnection(userId) {
+    //initaiting call
     const peerConnection = new RTCPeerConnection({ iceServers: ICE_SERVERS });
     peerConnections.current[userId] = peerConnection;
+
+    localStream.getTracks().forEach((track) => {
+      peerConnection.addTrack(track, localStream);
+    });
 
     
     peerConnection.ontrack = (event) => {
@@ -346,6 +350,31 @@ export default function Room() {
     };
 
     console.log("[DEBUG] Signaling state after PC creation:", peerConnection.signalingState);
+
+    // This user is initiating the call — send the offer
+    const isInitiator = socketRef.current.id < userId;
+
+    if (isInitiator) {
+      console.log(`[DEBUG] Creating offer for ${userId}`);
+      peerConnection
+        .createOffer()
+        .then((offer) => {
+          return peerConnection.setLocalDescription(offer);
+        })
+        .then(() => {
+          socketRef.current.emit("offer", {
+            target: userId,
+            caller: socketRef.current.id,
+            sdp: peerConnection.localDescription,
+          });
+        })
+        .catch((error) => {
+          console.error("[ERROR] Failed to create/send offer:", error);
+        });
+    }
+
+
+    // console.log("[DEBUG] Signaling state after PC creation:", peerConnection.signalingState);
 
     return peerConnection;
   }
