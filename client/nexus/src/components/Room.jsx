@@ -45,6 +45,8 @@ export default function Room() {
   const [ttsAudioMap, setTtsAudioMap] = useState({});
   const [isCaptionOn, setIsCaptionOn] = useState(false)
     
+  const pendingCandidates = useRef({});
+
   useEffect(() => {
     if (!username) {
       navigate(`/?redirectRoom=${roomID}`);
@@ -68,7 +70,7 @@ export default function Room() {
       {
         setIsCaptionOn(true);
       }
-
+      
       userVideo.current.srcObject = stream;
       userStream.current = stream;
       
@@ -151,7 +153,21 @@ export default function Room() {
         const peerConnection = peerConnections.current[caller];
         if (!peerConnection) return;
 
-        await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+        const rtcCandidate = new RTCIceCandidate(candidate);
+
+        if(!peerConnection.remoteDescription|| peerConnection.remoteDescription.type === ""){
+          if(!pendingCandidates.current[caller]){
+            pendingCandidates.current[caller] = [];
+          }
+          pendingCandidates.current[caller].push(rtcCandidate);
+        } else {
+          try{
+            await peerConnection.addIceCandidate(rtcCandidate);
+          } catch (err) {
+            console.error("Failed to add Ice candidate:", err);
+          }
+        }
+        // await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
       });
 
       socket.on("user left",(id)=>{
@@ -303,6 +319,17 @@ export default function Room() {
 
     const peerConnection = createPeerConnection(caller);
     await peerConnection.setRemoteDescription(new RTCSessionDescription(sdp));
+
+    if (pendingCandidates.current[caller]) {
+      for (const candidate of pendingCandidates.current[caller]) {
+        try {
+          await peerConnection.addIceCandidate(candidate);
+        } catch (err) {
+          console.error("Failed to add buffered ICE candidate:", err);
+        }
+      }
+      delete pendingCandidates.current[caller];
+    }
 
     console.log("[DEBUG] Signaling state after setting remote:", peerConnection.signalingState);
     userStream.current.getTracks().forEach((track) =>
