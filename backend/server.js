@@ -109,8 +109,9 @@ function cleanupFiles(...paths) {
 }
 
 async function generateTTS(text, outPath){
+  console.log("🔈 Sending TTS request with text:", text);
   try{
-    const response = await axios.post("http://localhost:5005/synthesize",{text},{
+    const response = await axios.post("https://nexus-video-call.fly.dev/tts",{text},{
       responseType:"stream"
     })
 

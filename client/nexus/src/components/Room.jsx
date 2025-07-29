@@ -24,6 +24,8 @@ export default function Room() {
   const userVideo = useRef();
   const [remoteStreams, setRemoteStreams] = useState([]);
 
+  let isInitiator = false;
+
   const socketRef = useRef();
   const userStream = useRef();
   const peerConnections = useRef({}); 
@@ -87,6 +89,15 @@ export default function Room() {
       });
       socketRef.current = socket;
 
+      // socket.on("room-users", (users) => {
+      //   console.log("All existing user IDs:", users);
+      //   if (users.length === 1 && users[0] !== socket.id) {
+      //     isInitiator = true;
+      //     console.log("[INFO] You are the initiator");
+      //     createPeerConnection(); // only initiator calls createOffer
+      //     createOffer(); // this triggers the signaling chain
+      //   }
+      // });
       socket.on("all users", async (userList) => {
         console.log("[INFO] All existing user IDs:", userList);
         const myId = socket.id;
@@ -131,22 +142,49 @@ export default function Room() {
             console.error("[ERR] No peerConnection found for:", caller);
             return;
         }
-        if (peerConnection.signalingState !== "have-local-offer") {
-            console.warn("[WARN] Not in have-local-offer state, ignoring answer");
-            const waitForOffer = new Promise((resolve) => {
-              const interval = setInterval(() => {
-                if (peerConnection.signalingState === "have-local-offer") {
-                  clearInterval(interval);
-                  resolve();
-                }
-              }, 100); // poll every 100ms
-              setTimeout(() => clearInterval(interval), 3000); // timeout after 3s
-            });
 
-            await waitForOffer;
-          }
+        const waitUntilHaveLocalOffer = () =>
+          new Promise((resolve, reject) => {
+            const maxWait = 3000; // 3 seconds max
+            const interval = 100;
+            let waited = 0;
 
-        await peerConnection.setRemoteDescription(new RTCSessionDescription(sdp));
+            const checkState = () => {
+              if (peerConnection.signalingState === "have-local-offer") {
+                resolve();
+              } else if (waited >= maxWait) {
+                reject(new Error("Timed out waiting for local offer"));
+              } else {
+                waited += interval;
+                setTimeout(checkState, interval);
+              }
+            };
+
+            checkState();
+          });
+        
+        try {
+          await waitUntilHaveLocalOffer();
+          await peerConnection.setRemoteDescription(new RTCSessionDescription(sdp));
+        } catch (err) {
+          console.warn("[WARN] Could not apply answer SDP:", err);
+        }
+        // if (peerConnection.signalingState !== "have-local-offer") {
+        //     console.warn("[WARN] Not in have-local-offer state, ignoring answer");
+        //     const waitForOffer = new Promise((resolve) => {
+        //       const interval = setInterval(() => {
+        //         if (peerConnection.signalingState === "have-local-offer") {
+        //           clearInterval(interval);
+        //           resolve();
+        //         }
+        //       }, 100); // poll every 100ms
+        //       setTimeout(() => clearInterval(interval), 3000); // timeout after 3s
+        //     });
+
+        //     await waitForOffer;
+        //   }
+
+        // await peerConnection.setRemoteDescription(new RTCSessionDescription(sdp));
       });
 
       socket.on("ice-candidate", async ({ caller, candidate }) => {
