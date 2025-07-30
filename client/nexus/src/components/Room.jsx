@@ -186,27 +186,32 @@ export default function Room() {
         // await peerConnection.setRemoteDescription(new RTCSessionDescription(sdp));
       });
 
+      // socket.on("ice-candidate", async ({ caller, candidate }) => {
+      //   const peerConnection = peerConnections.current[caller];
+      //   if (!peerConnection) return;
+
+      //   const rtcCandidate = new RTCIceCandidate(candidate);
+
+      //   if(!peerConnection.remoteDescription|| peerConnection.remoteDescription.type === ""){
+      //     if(!pendingCandidates.current[caller]){
+      //       pendingCandidates.current[caller] = [];
+      //     }
+      //     pendingCandidates.current[caller].push(rtcCandidate);
+      //   } else {
+      //     try{
+      //       await peerConnection.addIceCandidate(rtcCandidate);
+      //     } catch (err) {
+      //       console.error("Failed to add Ice candidate:", err);
+      //     }
+      //   }
+      //   // await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+      // });
       socket.on("ice-candidate", async ({ caller, candidate }) => {
         const peerConnection = peerConnections.current[caller];
         if (!peerConnection) return;
 
-        const rtcCandidate = new RTCIceCandidate(candidate);
-
-        if(!peerConnection.remoteDescription|| peerConnection.remoteDescription.type === ""){
-          if(!pendingCandidates.current[caller]){
-            pendingCandidates.current[caller] = [];
-          }
-          pendingCandidates.current[caller].push(rtcCandidate);
-        } else {
-          try{
-            await peerConnection.addIceCandidate(rtcCandidate);
-          } catch (err) {
-            console.error("Failed to add Ice candidate:", err);
-          }
-        }
-        // await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+        await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
       });
-
       socket.on("user left",(id)=>{
         console.log("[INFO] User left:", id);
 
@@ -315,14 +320,73 @@ export default function Room() {
     }
   }
 
+  // function createPeerConnection(userId) {
+  //   //initaiting call
+  //   const peerConnection = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+  //   peerConnections.current[userId] = peerConnection;
+
+  //   localStream.getTracks().forEach((track) => {
+  //     peerConnection.addTrack(track, localStream);
+  //   });
+
+    
+  //   peerConnection.ontrack = (event) => {
+  //     const stream = event.streams[0]
+  //     if(!stream) return
+      
+  //     setRemoteStreams((prev) => {
+  //       const exists = prev.some((user) => user.id === userId);
+  //       if (!exists) {
+  //         return [...prev, { id: userId, stream, username: "Unknown" }];
+  //       }
+  //       return prev.map((user) =>
+  //         user.id === userId ? { ...user, stream } : user
+  //       );
+  //     });
+  //   };
+  //   peerConnection.onicecandidate = (event) => {
+  //     if (event.candidate) {
+  //       socketRef.current.emit("ice-candidate", {
+  //         target: userId,
+  //         caller: socketRef.current.id,
+  //         candidate: event.candidate,
+  //       });
+  //     }
+  //   };
+
+  //   console.log("[DEBUG] Signaling state after PC creation:", peerConnection.signalingState);
+
+  //   // This user is initiating the call — send the offer
+  //   const isInitiator = socketRef.current.id < userId;
+
+  //   if (isInitiator) {
+  //     console.log(`[DEBUG] Creating offer for ${userId}`);
+  //     peerConnection
+  //       .createOffer()
+  //       .then((offer) => {
+  //         return peerConnection.setLocalDescription(offer);
+  //       })
+  //       .then(() => {
+  //         socketRef.current.emit("offer", {
+  //           target: userId,
+  //           caller: socketRef.current.id,
+  //           sdp: peerConnection.localDescription,
+  //         });
+  //       })
+  //       .catch((error) => {
+  //         console.error("[ERROR] Failed to create/send offer:", error);
+  //       });
+  //   }
+
+
+  //   // console.log("[DEBUG] Signaling state after PC creation:", peerConnection.signalingState);
+
+  //   return peerConnection;
+  // }
+
   function createPeerConnection(userId) {
-    //initaiting call
     const peerConnection = new RTCPeerConnection({ iceServers: ICE_SERVERS });
     peerConnections.current[userId] = peerConnection;
-
-    localStream.getTracks().forEach((track) => {
-      peerConnection.addTrack(track, localStream);
-    });
 
     
     peerConnection.ontrack = (event) => {
@@ -351,34 +415,8 @@ export default function Room() {
 
     console.log("[DEBUG] Signaling state after PC creation:", peerConnection.signalingState);
 
-    // This user is initiating the call — send the offer
-    const isInitiator = socketRef.current.id < userId;
-
-    if (isInitiator) {
-      console.log(`[DEBUG] Creating offer for ${userId}`);
-      peerConnection
-        .createOffer()
-        .then((offer) => {
-          return peerConnection.setLocalDescription(offer);
-        })
-        .then(() => {
-          socketRef.current.emit("offer", {
-            target: userId,
-            caller: socketRef.current.id,
-            sdp: peerConnection.localDescription,
-          });
-        })
-        .catch((error) => {
-          console.error("[ERROR] Failed to create/send offer:", error);
-        });
-    }
-
-
-    // console.log("[DEBUG] Signaling state after PC creation:", peerConnection.signalingState);
-
     return peerConnection;
   }
-
   async function handleReceiveCall(caller, sdp) {
     console.log("[DEBUG] Received offer from", caller);
     
@@ -388,16 +426,16 @@ export default function Room() {
 
     await peerConnection.setRemoteDescription(new RTCSessionDescription(sdp));
 
-    if (pendingCandidates.current[caller]) {
-      for (const candidate of pendingCandidates.current[caller]) {
-        try {
-          await peerConnection.addIceCandidate(candidate);
-        } catch (err) {
-          console.error("Failed to add buffered ICE candidate:", err);
-        }
-      }
-      delete pendingCandidates.current[caller];
-    }
+    // if (pendingCandidates.current[caller]) {
+    //   for (const candidate of pendingCandidates.current[caller]) {
+    //     try {
+    //       await peerConnection.addIceCandidate(candidate);
+    //     } catch (err) {
+    //       console.error("Failed to add buffered ICE candidate:", err);
+    //     }
+    //   }
+    //   delete pendingCandidates.current[caller];
+    // }
 
     console.log("[DEBUG] Signaling state after setting remote:", peerConnection.signalingState);
     userStream.current.getTracks().forEach((track) =>
